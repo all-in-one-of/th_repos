@@ -1,2 +1,4 @@
 说明:
     测试公司git库
+    
+    MAYA_MODULE_PATH = Z:\Resource\Support\th_repos\maya\modules
