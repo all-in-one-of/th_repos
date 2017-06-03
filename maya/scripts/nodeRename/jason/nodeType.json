@@ -1,0 +1,47 @@
+{
+	"aiStandard" 		: "_mat",
+	"aiSkin" 			: "_mat",
+	"blinn" 			: "_mat",
+	"lambert" 			: "_mat",
+	"layeredShader" 	: "_mat",
+	"phong" 			: "_mat",
+	"phongE"			: "_mat",
+	"anisotropic" 		: "_mat",
+	"hairTubeShader"	: "_mat",
+	"oceanShader"		: "_mat",
+	"rampShader"		: "_mat",
+	"surfaceShader"		: "_mat",
+	
+	"shadingEngine" 	: "SG",
+	
+	"Light" 			: "_lit",
+	"ambientLight" 		: "_lit",
+	"areaLight" 		: "_lit",
+	"directionalLight" 	: "_lit",
+	"pointLight" 		: "_lit",
+	"spotLight" 		: "_lit",
+	"volumeLight" 		: "_lit",
+	"aiAreaLight" 		: "_lit",
+	"aiSkyDomeLight" 	: "_lit",
+	"aiPhotometricLight": "_lit",
+	
+	"file" 				: "_fil",
+	"place2dTexture" 	: "_p2d",
+	"clamp" 			: "_clp",
+	"ramp" 				: "_rmp",
+	"bump2d" 			: "_bmp",
+	"bump3d" 			: "_bmp",
+	"layeredTexture" 	: "_lyt",
+	"rgbToHsv"			: "rth",
+	
+	"aiStandIn" 		: "_ass",
+	"aiVolume" 			: "_vdb",
+		
+	"mesh" 				: "_msh",
+	"nurbsSurface" 		: "_nbs",
+	"group" 			: "_grp",
+	"nurbsCurve" 		: "_crv",
+	
+	"renderlayer" 		: "_RDL",
+	"displaylayer" 		: "_DPL"
+}

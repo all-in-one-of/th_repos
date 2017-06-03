@@ -1,0 +1,267 @@
+//
+// pgYeti - Yeti Maya commands
+// 
+// (c) 2010-Present Peregrine Labs a division of Peregrine Visual Storytelling Ltd.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Peregrine Visual Storytelling Ltd. ("Peregrine") 
+// and/or its licensors, which is protected by U.S. and Canadian federal 
+// copyright law and by international treaties.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. PEREGRINE
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE 
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL PEREGRINE AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF PEREGRINE AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+//
+
+global int $g_pgYetiSelectionChangedScriptJob = -1;
+global int $g_pgYetiConstHistChangedScriptJob = -1;
+global int $g_pgYetiGlobalsScriptJobNewScene = -1;
+global int $g_pgYetiGlobalsScriptJobOpenedScene = -1;
+global int $g_pgYetiGlobalsScriptJobDAGObjectCreated = -1;
+
+global proc pgYetiInit()
+{
+    // global script jobs
+    global int $g_pgYetiSelectionChangedScriptJob;
+    global int $g_pgYetiConstHistChangedScriptJob;
+
+    // General Scripts
+    source pgYetiUtilities;
+    source pgYetiNode;
+    source pgYetiGroom;
+	source pgYetiFeather;
+    source pgYetiUpdateAE;
+	source pgYetiGraphPanel;
+
+    // Rendering Scripts
+    source pgYetiPrman;
+    source pgYetiVRay;
+	
+    // Initialize Renderers
+	pgYetiInitRenderGlobals;
+    pgYetiPrmanInit;
+    pgYetiVRayInit;
+
+    evalDeferred pgYetiInitShelf;
+
+    if ( ( $g_pgYetiSelectionChangedScriptJob == -1 ) || !(`scriptJob -exists $g_pgYetiSelectionChangedScriptJob`) )
+        $g_pgYetiSelectionChangedScriptJob = `scriptJob -event "SelectionChanged" "pgYetiUpdateAE"`;
+
+    if ( ( $g_pgYetiConstHistChangedScriptJob == -1 ) || !(`scriptJob -exists $g_pgYetiConstHistChangedScriptJob`) )
+        $g_pgYetiConstHistChangedScriptJob = `scriptJob -event "constructionHistoryChanged" "pgYetiUpdateAE"`;
+    
+    pgYetiBuildMenus;
+	pgYetiGraphPanelCreate;
+	
+	addPanelCategory( "Yeti", "Panel", "pgYetiBuildYetiPanelsPulldown" );
+}
+
+global proc pgYetiUnInit()
+{
+    global int $g_pgYetiSelectionChangedScriptJob;
+    global int $g_pgYetiConstHistChangedScriptJob;
+	
+	removePanelCategory( "Yeti" );
+
+	pgYetiUninitRenderGlobals;
+    pgYetiPrmanUnInit;
+    pgYetiVRayUnInit;
+
+    if ( $g_pgYetiSelectionChangedScriptJob != -1 )
+    {
+        if ( `scriptJob -exists $g_pgYetiSelectionChangedScriptJob` )
+            scriptJob -kill $g_pgYetiSelectionChangedScriptJob;
+
+        $g_pgYetiSelectionChangedScriptJob = -1;
+    }
+
+    if ( $g_pgYetiConstHistChangedScriptJob != -1 )
+    {
+        if ( `scriptJob -exists $g_pgYetiConstHistChangedScriptJob` )
+            scriptJob -kill $g_pgYetiConstHistChangedScriptJob;
+
+        $g_pgYetiConstHistChangedScriptJob = -1;
+    }
+}
+
+global proc pgYetiInitShelf()
+{
+    if(about("-batch"))
+    {
+        return;
+    }
+
+    if( !`shelfLayout -ex Yeti`) {
+        loadNewShelf "shelf_Yeti";
+    }
+}
+
+global proc pgYetiBuildMenus()
+{
+	global string $gMainWindow;
+
+	if (`menu -exists pgYetiMainWindowMenu`)
+		deleteUI pgYetiMainWindowMenu;
+
+	if ($gMainWindow != "")
+	{
+		setParent $gMainWindow;
+
+		menu -label "Yeti" -tearOff true pgYetiMainWindowMenu;
+		menuItem -label "Open Graph Editor" -annotation "Open Yeti Graph Editor in a torn off panel." -command pgYetiTearOffGraphPanel;
+                menuItem -divider true;
+                menuItem -label "Create Yeti Node"
+        		-annotation "Create a new Yeti node"
+        		-command pgYetiCreate;
+
+				menuItem -label "Create Yeti Node On Mesh"
+        		-annotation "Create a new Yeti node and make the selected mesh the first input"
+        		-command pgYetiCreateOnMesh;
+        		
+                menuItem -label "Create Groom on Mesh"
+        		-annotation "Create a new Groom on the selected mesh"
+        		-command pgYetiCreateGroomOnMesh;
+				
+                menuItem -label "Create Feather"
+        		-annotation "Create a new Feather node"
+        		-command pgYetiCreateFeather;
+
+		menuItem -divider true;
+		menuItem -label "Export Groom From Selected Yeti Node"
+				-annotation "Export the Currently Selected Yeti Node to a Groom file"
+				-command pgYetiExportGroomFromSelected;
+				
+                menuItem -label "Import Groom From Selected Yeti Node"
+                                -annotation "Import the Currently Referenced Grooms on the Selected Yeti Node"
+                                -command pgYetiImportGroomFileFromSelected;
+
+                menuItem -label "Convert Groom(s) to Curves"
+                                -annotation "Convert Currently Selected Groom Node to Nurbs Curves"
+                                -command "pgYetiConvertGroomToCurves";
+
+                menuItem -label "Save Groom(s) Current Strand Shape"
+                                -annotation "Bake the current strand shape"
+                                -command "pgYetiSaveCurrentStrandShapeOnSelected";
+
+                menuItem -label "Save Groom(s) Rest Pose"
+                                -annotation "Update the internal root positions for each strand based on the current input mesh"
+                                -command "pgYetiSaveGroomRestPoseOnSelected";
+                menuItem -divider true;
+                menuItem -label "Save Guides Rest Position"
+                        -annotation "Bake the current position/orientation into the guide curves"
+                        -command "pgYetiCommand -saveGuidesRestPosition";
+
+                menuItem -label "Remove Guides Rest Position"
+                        -annotation "Remove the current rest position/orientation from the guide curves"
+                        -command "pgYetiCommand -removeGuidesRestPosition";
+                menuItem -divider true;
+                menuItem -label "Convert to Maya Objects"
+                        -annotation "Convert the generated Yeti objects into Maya representations."
+                        -command "pgYetiCommand -generateMayaObjects";
+				menuItem -divider true;
+                menuItem -label "Flush Texture Cache"
+                        -annotation "Flush Texture Cache to free memory"
+                        -command "pgYetiCommand -flushTextureCache";
+		        menuItem -label "Flush Geometry Cache"
+		                -annotation "Flush Geometry Cache to free memory and force cache files to reload"
+		                -command "pgYetiCommand -flushGeometryCache";
+				menuItem -label "Flush Display Cache of Selected Node"
+						-annotation "Flush the Display Cache of the selected Yeti node"
+						-command "pgYetiCommand -flushDisplayCache";
+				menuItem -label "Flush Display Cache of All Nodes"
+						-annotation "Flush the Display Cache of all the Yeti nodes in the scene"
+						-command "pgYetiFlushDisplayCacheAllNodes";
+				menuItem -divider true;
+				menuItem -label "Help" -command "pgYetiMayaUI -help";
+				menuItem -label "About" -command "pgYetiMayaUI -about";
+        }
+}
+
+global proc pgYetiBuildYetiPanelsPulldown( string $parent, string $panel )
+{
+	//  Description:
+	//        Used as the menus 
+	setParent -m $parent;
+	menu -e -deleteAllItems $parent;
+	
+	menuItem -l "Graph Editor" -command ( "scriptedPanel -e -rp " + $panel + " pgYetiGraphPanel;" );
+}
+
+global proc pgYetiInitRenderGlobals()
+{
+	global int $g_pgYetiGlobalsScriptJobNewScene;
+	global int $g_pgYetiGlobalsScriptJobOpenedScene;
+	global int $g_pgYetiGlobalsScriptJobDAGObjectCreated;
+	
+	if ( ($g_pgYetiGlobalsScriptJobNewScene == -1) || !(`scriptJob -exists $g_pgYetiGlobalsScriptJobNewScene`) )
+	{	
+		$g_pgYetiGlobalsScriptJobNewScene = `scriptJob -event "NewSceneOpened" pgYetiInitRenderGlobals`;
+	}
+
+	if ( ($g_pgYetiGlobalsScriptJobOpenedScene == -1) || !(`scriptJob -exists $g_pgYetiGlobalsScriptJobOpenedScene`) )
+	{	
+		$g_pgYetiGlobalsScriptJobOpenedScene = `scriptJob -event "SceneOpened" pgYetiInitRenderGlobals`;
+	}
+
+	if ( ($g_pgYetiGlobalsScriptJobDAGObjectCreated == -1) || !(`scriptJob -exists $g_pgYetiGlobalsScriptJobDAGObjectCreated`) )
+	{	
+		$g_pgYetiGlobalsScriptJobDAGObjectCreated = `scriptJob -event "DagObjectCreated" pgYetiInitRenderGlobals`;
+	}
+
+	if (pgYetiNodesExist())
+	{
+		pgYetiAppendToString( "defaultRenderGlobals", "preMel", "pgYetiPreRender" );
+	}
+}
+
+global proc pgYetiUninitRenderGlobals()
+{
+	global int $g_pgYetiGlobalsScriptJobNewScene;
+	global int $g_pgYetiGlobalsScriptJobOpenedScene;
+	global int $g_pgYetiGlobalsScriptJobDAGObjectCreated;
+
+	if ( $g_pgYetiGlobalsScriptJobNewScene != -1 )
+	{	
+		if ( `scriptJob -exists $g_pgYetiGlobalsScriptJobNewScene` )
+			scriptJob -kill $g_pgYetiGlobalsScriptJobNewScene;
+			
+		$g_pgYetiGlobalsScriptJobNewScene = -1;
+	}
+
+	if ( $g_pgYetiGlobalsScriptJobOpenedScene != -1 )
+	{	
+		if ( `scriptJob -exists $g_pgYetiGlobalsScriptJobOpenedScene` )
+			scriptJob -kill $g_pgYetiGlobalsScriptJobOpenedScene;
+
+		$g_pgYetiGlobalsScriptJobOpenedScene = -1;
+	}
+
+	if ( $g_pgYetiGlobalsScriptJobDAGObjectCreated != -1 )
+	{	
+		if ( `scriptJob -exists $g_pgYetiGlobalsScriptJobDAGObjectCreated` )
+			scriptJob -kill $g_pgYetiGlobalsScriptJobDAGObjectCreated;
+
+		$g_pgYetiGlobalsScriptJobDAGObjectCreated = -1;
+	}
+
+	pgYetiRemoveFromString( "defaultRenderGlobals", "preMel", "pgYetiPreRender" );
+}
+
+global proc pgYetiPreRender()
+{
+	// Description:
+	// 	This is called prior to any rendering to make sure specific optionVar's are set
+	
+	// set the temporary directory for Yeti cache files
+	string $workspaceRootDirectory = `workspace -q -rd`;
+	putenv "currentYetiTempDirectory" ( $workspaceRootDirectory + "/yeti/tmp" );
+}
+
+pgYetiInit();

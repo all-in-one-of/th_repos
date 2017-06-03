@@ -1,0 +1,505 @@
+global string $shaveRunTimeCommands_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2006
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com)
+//
+
+//
+// The commands in this script form the external MEL interface for Shave.
+// Users can use these commands in their own scripts and we will strive to
+// ensure that they don't change from version to version.  We won't be
+// able to guarantee that all the time -- for example if a feature is
+// removed from the product or completely changes in nature, then any
+// corresponding commands may no longer be valid -- but we will try to
+// keep such changes to a minimum.
+//
+
+proc registerCommand(string $commandName, string $ann, string $cmd)
+{
+	if (`runTimeCommand -exists $commandName`)
+		runTimeCommand -e -cat "Shave" -c $cmd -ann $ann $commandName;
+	else
+		runTimeCommand -cat "Shave" -c $cmd -ann $ann $commandName;
+}
+
+
+global proc shaveRunTimeCommands()
+{
+	//
+	// Menu Items
+	//
+	registerCommand(
+		"shaveSelectPresetAndCreateHair",
+		"Shave: select a preset and create a new hair node from it",
+		"shave_createHairFromPresetSelect"
+	);
+
+	registerCommand(
+		"shaveMultiClone",
+		"Shave: clone node heirarchy with hair",
+		"shave_multiClone"
+	);
+
+	registerCommand(
+		"shaveCombFromCurves",
+		"Shave: comb hair to match selected curves",
+		"shave_recomb"
+	);
+
+	registerCommand(
+		"shaveSelectAndApplyPreset",
+		"Shave: select a preset and apply it to the current hair node",
+		"shave_copyHairFromPresetSelect"
+	);
+
+	registerCommand(
+		"shaveSetInstance",
+		"Shave: set instance object",
+		"shave_setInstance"
+	);
+
+	registerCommand(
+		"shaveClearInstance",
+		"Shave: clear instance object",
+		"shave_clearInstance"
+	);
+
+	registerCommand(
+		"shaveUpdateGrowthSurfaces",
+		"Shave: change the set of surfaces from which hair grows",
+		"shave_setHairMesh"
+	);
+
+	registerCommand(
+		"shaveUpdateCollisionSurfaces",
+		"Shave: change the set of surfaces with which hair collides",
+		"shave_setCollisionMesh"
+	);
+
+	registerCommand(
+		"shaveClearCollisionSurfaces",
+		"Shave: clear the set of surfaces with which hair collides",
+		"shave_clearCollisionMesh"
+	);
+
+	registerCommand(
+		"shaveCreateSplineLocks",
+		"Shave: lock the current hair node's guides to a set of selected curves",
+		"shave_createSplineLocks"
+	);
+
+	registerCommand(
+		"shaveDeleteSplineLocks",
+		"Shave: if the current hair node is spline locked, unlock it",
+		"shave_deleteSplineLocks"
+	);
+
+	registerCommand(
+		"shaveCreateCurvesFromGuides",
+		"Shave: create NURBS curves matching the current hair node's guides",
+		"shave_guidesToCurves"
+	);
+
+	registerCommand(
+		"shaveCreateCurvesFromHairs",
+		"Shave: create NURBS curves matching the current hair node's hairs",
+		"shave_hairsToCurves"
+	);
+
+	registerCommand(
+		"shaveCreatePolysFromHairs",
+		"Shave: create poly meshes matching the current hair node's hairs",
+		"shave_hairsToPolys"
+	);
+
+	registerCommand(
+		"shaveCreateVertexShader",
+		"Shave: create a vertex shader",
+		"shave_createVertexShader \"\""
+	);
+
+	registerCommand(
+		"shaveSynchVertexShader",
+		"Shave: re-synch a vertex shader to match its corresponding hair node",
+		"shave_synchShader \"\""
+	);
+
+	registerCommand(
+		"shaveUVLinkingEditor",
+		"Shave: edit associations between Shave parameters and surface UV maps",
+		"shaveLinkingEditor"
+	);
+
+	registerCommand(
+		"shaveResetRestPose",
+		"Shave: reset the current hair node's rest pose",
+		"shave_resetRest"
+	);
+	
+	registerCommand(
+		"shaveDelete",
+ 		"Shave: delete the current hair node",
+ 		"shaveDeleteCurrent"
+	);
+
+	registerCommand(
+		"shaveScaleSelectAll",
+		"Shave: set scale select for all nodes",
+		"shave_ScaleSelectAll"
+	);
+	
+	registerCommand(
+		"shaveScaleSelectCurrent",
+		"Shave: set scale select for current node",
+		"shave_ScaleSelectCurrent"
+	);
+	
+	registerCommand(
+		"shaveResetRestPose",
+		"Shave: reset the current hair node's rest pose",
+		"shave_resetRest"
+	);
+
+	registerCommand(
+		"shaveEditGlobalSettings",
+		"Shave: edit global settings",
+		"shaveGlobalsEditor"
+	);
+
+	registerCommand(
+		"shaveSelectGrowthSurfaces",
+		"Shave: select the current hair node's growth surfaces",
+		"shave_selectMesh growth"
+	);
+
+	registerCommand(
+		"shaveSelectCollisionSurfaces",
+		"Shave: select the current hair node's collision surfaces",
+		"shave_selectMesh collision"
+	);
+
+	registerCommand(
+		"shaveSynchToTextures",
+		"Shave: synchronize the current hair node with its textures",
+		"shaveUpdateTextures"
+	);
+
+	registerCommand(
+		"shaveToggleHideHair",
+		"Shave: hide and unhide all the hair in the scene",
+		"shave_toggleHideHair"
+	);
+
+	registerCommand(
+		"shaveToggleFallback",
+		"Shave: fallback hair count on various operations",
+		"shave_toggleFallbackHair"
+	);
+
+	registerCommand(
+		"shaveCreateShelf",
+		"Shave: create a shelf containing shave styling tools",
+		"shaveShelf_create"
+	);
+
+	//
+	// Light Shadow Parameters
+	//
+	registerCommand(
+		"shaveAddShadowParamsToLights",
+		"Shave: add shadow parameters to selected lights",
+		"shave_addShadowParamsToLight \"\""
+	);
+
+	registerCommand(
+		"shaveRemoveShadowParamsFromLights",
+		"Shave: remove shadow parameters from selected lights",
+		"shave_removeShadowParamsFromLight \"\""
+	);
+
+	//
+	// Dynamics
+	//
+	registerCommand(
+		"shaveToggleLiveMode",
+		"Shave: turn Live Mode (interactive dynamics) on and off",
+		"shave_toggleLive"
+	);
+
+	registerCommand(
+		"shaveRunDynamicsCurrent",
+		"Shave: run and cache dynamics for the current hair node",
+		"shaveDynamics current"
+	);
+
+	registerCommand(
+		"shaveRunDynamicsAll",
+		"Shave: run and cache dynamics for all hair nodes",
+		"shaveDynamics all"
+	);
+
+	registerCommand(
+		"shaveClearDynamicsCurrent",
+		"Shave: clear the dynamics cache for the current hair node",
+		"shave_clearDynamics \"\""
+	);
+
+	registerCommand(
+		"shaveClearDynamicsAll",
+		"Shave: clear the dynamics cache for all hair nodes",
+		"shave_clearDynamics all"
+	);
+
+	//
+	// Component Selection Types
+	//
+	registerCommand(
+		"shaveSelectGuides",
+		"Shave: select guides",
+		"shaveBrush_setSelectMode guide"
+	);
+
+	registerCommand(
+		"shaveSelectVerts",
+		"Shave: select vertices",
+		"shaveBrush_setSelectMode vert"
+	);
+
+	registerCommand(
+		"shaveSelectByRoots",
+		"Shave: select guides by their roots",
+		"shaveBrush_setSelectMode root"
+	);
+
+	registerCommand(
+		"shaveSelectTips",
+		"Shave: select tips",
+		"shaveBrush_setSelectMode tip"
+	);
+
+	//
+	// Selection Utilities
+	//
+	registerCommand(
+		"shaveSelectGrow",
+		"Shave: grow selection by adding surrounding hairs",
+		"shaveStyle -growSelection"
+	);
+
+	registerCommand(
+		"shaveSelectInverse",
+		"Shave: invert selection",
+		"shaveStyle -invertSelection"
+	);
+
+	registerCommand(
+		"shaveSelectRotateUp",
+		"Shave: move selected verts higher up hairs",
+		"shaveStyle -rotateSelectionUp"
+	);
+
+	registerCommand(
+		"shaveSelectHide",
+		"Shave: hide selected hairs",
+		"shaveStyle -hideSelection true"
+	);
+
+	registerCommand(
+		"shaveSelectUnhide",
+		"Shave: unhide selected hairs",
+		"shaveStyle -hideSelection false"
+	);
+
+	registerCommand(
+		"shaveSplitSelection",
+		"Shave: split selected hairs from interpolation groups",
+		"shaveStyle -splitSelection"
+	);
+
+	registerCommand(
+		"shaveMergeSelection",
+		"Shave: merge interpolation groups of selected hairs",
+		"shaveStyle -mergeSelection"
+	);
+	
+	registerCommand(
+		"shaveUpdateTexturesN",
+		"Shave: refresh textures",
+		"shaveUpdateTextures"
+	);
+
+
+	//
+	// Brush Modes
+	//
+	registerCommand(
+		"shaveBrushTranslateMode",
+		"Shave: Brush Mode: move/translate hair",
+		"shaveBrushSetMode 0"
+	);
+
+	registerCommand(
+		"shaveBrushScaleMode",
+		"Shave: Brush Mode: resize/scale hair",
+		"shaveBrushSetMode 1"
+	);
+
+	registerCommand(
+		"shaveBrushRotateMode",
+		"Shave: Brush Mode: rotate hair about brush",
+		"shaveBrushSetMode 2"
+	);
+
+	registerCommand(
+		"shaveBrushStandMode",
+		"Shave: Brush Mode: stand hair straight out from surface",
+		"shaveBrushSetMode 3"
+	);
+
+	registerCommand(
+		"shaveBrushPuffMode",
+		"Shave: Brush Mode: puff hair out from surface",
+		"shaveBrushSetMode 4"
+	);
+
+	registerCommand(
+		"shaveBrushClumpMode",
+		"Shave: Brush Mode: clump hair together",
+		"shaveBrushSetMode 5"
+	);
+
+	//
+	// Styling Tools
+	//
+	registerCommand(
+		"shaveBrushTool",
+		"Shave: Brush Tool: brush/style hair",
+		"shave_brushTool false"
+	);
+
+	registerCommand(
+		"shaveBrushToolOptions",
+		"Shave: Brush Tool options",
+		"shave_brushTool true"
+	);
+
+	registerCommand(
+		"shaveCutTool",
+		"Shave: Cut Tool: cut hair",
+		"shave_cutTool false"
+	);
+
+	registerCommand(
+		"shaveCutToolOptions",
+		"Shave: Cut Tool options",
+		"shave_cutTool true"
+	);
+
+	//
+	// Styling Utilities
+	//
+	registerCommand(
+		"shaveAttenuate",
+		"Shave: attenuate hair",
+		"shaveStyle -attenuate"
+	);
+
+	registerCommand(
+		"shavePopSelected",
+		"Shave: pop selected hairs",
+		"shaveStyle -popSelected"
+	);
+
+	registerCommand(
+		"shavePopZeroSized",
+		"Shave: pop zero-sized hairs",
+		"shaveStyle -popZeroSized"
+	);
+
+	registerCommand(
+		"shaveRecomb",
+		"Shave: recomb hair",
+		"shaveStyle -recomb"
+	);
+
+	registerCommand(
+		"shaveReplaceRest",
+		"Shave: replace rest position on hair",
+		"shaveStyle -replaceRest"
+	);
+
+	registerCommand(
+		"shaveTglCollision",
+		"Shave: toggle collisions",
+		"shaveStyle -tglCollision"
+	);
+
+	registerCommand(
+		"shaveTglHairs",
+		"Shave: toggle hairs",
+		"shaveToggleHideHair"
+	);
+
+	registerCommand(
+		"shaveTglFallback",
+		"Shave: toggle fallback",
+		"shaveToggleFallback"
+	);
+
+	registerCommand(
+		"shaveLockHair",
+		"Shave: lock hairs",
+		"shaveStyle -lock true"
+	);
+
+
+	registerCommand(
+		"shaveUnlockHair",
+		"Shave: unlock hairs",
+		"shaveStyle -lock false"
+	);
+
+	registerCommand(
+		"shaveUndo",
+		"Shave: undo last operation",
+		"shaveStyle -undo"
+	);
+}
+
+
+global proc shaveRunTimeCommands_cleanup()
+{
+	string	$cmds[] = `runTimeCommand -q -userCommandArray`;
+	string	$cmd;
+
+	for ($cmd in $cmds)
+	{
+		if (`runTimeCommand -q -cat $cmd` == "Shave")
+			runTimeCommand -e -delete $cmd;
+	}
+}
+
+
+global proc shaveStyle_rotateUp()
+{
+	//
+	// Rotate Up is only meaningful in vertex selection mode.  However, if
+	// the user is in tip selection mode then it can be useful to switch to
+	// vertex selection mode so that that tip selection can be rotated
+	// around to the bottom of the guide.
+	//
+	// So if we're in component mode and are selecting tips, switch to
+	// selecting vertices.
+	//
+	if (`selectMode -q -co`)
+	{
+		if (`optionVar -q shaveBrushSelectMode` == "tip") shaveSelectVerts;
+
+		shaveStyle -rotateSelectionUp;
+	}
+}

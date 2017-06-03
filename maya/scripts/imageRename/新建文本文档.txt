@@ -1,0 +1,102 @@
+
+attrDist = {'diffuse':['color','Kd','diffuseRoughness','Kb','KsssColor','Ksss','sssRadius'],'specular':['KsColor','Ks','specularRoughness','specularAnisotropy','specularRotation'],'reflection':['KrColor','Kr'],'refraction':['KtColor','Kt','IOR','dispersionAbbe','refractionRoughness'],'bump':['bumpValue','bumpMap']}
+
+nodeType = 'aiStandard'
+attrType = 'diffuse'
+attrFile = []
+for s in pm.ls(type = nodeType):
+    print u"----------ai材质球名字：%s" % s
+    for ss in attrDist.get(attrType):
+        print u'属性名：%s' % ss
+        if s.hasAttr(ss) and len(pm.listConnections(s +"." + ss))>0:
+            print '有连接'
+            for sss in pm.listConnections(s +"." + ss):
+                print u'下游节点： %s' % sss.name()
+                if sss.type() == 'file':
+                    print u'列出file节点：%s' % sss
+                    attrFile.append( sss )
+                for ssss in pm.ls(pm.hyperShade(listUpstreamNodes=sss),type='file'):
+                    print u'列出file节点：%s' % ssss
+                    attrFile.append( ssss )
+        else:
+            print "没有"
+
+    
+
+    
+def selectionChangedCallBack():
+    pm.select(cl=1)
+    if pm.treeView('FileTreeList_jarry',q=1,selectItem=1)>0:
+        for s in pm.treeView('FileTreeList_jarry',q=1,selectItem=1):
+            if pm.objExists(s):
+                pm.select(s,add=1)
+            else:
+                pm.select(cl=1)
+    else:
+        pm.select(cl=1)
+    
+def editLabelCallBack(*args):
+    print 'source: ' + args[0] + ' new: ' + str(args[1])
+    print args[0]
+    print str(args[1])
+    pm.rename(args[0],args[1])
+    return True
+#--------------------------------------
+if pm.window('filePathList', exists=True):
+    pm.deleteUI('filePathList', window=True)
+pm.window( 'filePathList',s=1)
+pm.menuBarLayout()
+pm.menu("edit",tearOff=1)
+pm.menu("info",tearOff=0)
+pm.formLayout('FileTreeListformLayout')
+pm.treeView( 'FileTreeList_jarry',parent = 'FileTreeListformLayout',adr=0,numberOfButtons =1, abr = False )
+
+pm.rowColumnLayout( 'rowCol_Jarry',numberOfColumns=1)
+bb0 = pm.button(l='Refresh List')
+pm.textField('textFieldInputName',w=100)
+pm.rowColumnLayout( 'rowCol_Jarry',numberOfColumns=2)
+bb1 = pm.button(l='renameFileNodeWithTex')
+bb2 = pm.button(l='renameFileNodePathName and osName')
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('FileTreeList_jarry','top', 2))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('FileTreeList_jarry','left', 2))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('FileTreeList_jarry','bottom', 100))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('FileTreeList_jarry','right', 2))
+
+pm.formLayout('FileTreeListformLayout',e=True, attachControl=('rowCol_Jarry','top', 2,'FileTreeList_jarry'))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('rowCol_Jarry','left', 2))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('rowCol_Jarry','bottom', 100))
+pm.formLayout('FileTreeListformLayout',e=True, attachForm=('rowCol_Jarry','right', 2))
+pm.showWindow('filePathList')
+#---------------
+#++++
+pm.treeView( 'FileTreeList_jarry', e=True,addItem = ('aiStandard', ''))
+pm.treeView( 'FileTreeList_jarry', e=True, image =('aiStandard',1, 'fpe_okPaths.png'))
+pm.treeView( 'FileTreeList_jarry', e=True,addItem = ('Diffuse', 'aiStandard'))
+pm.treeView( 'FileTreeList_jarry', e=True, image =('Diffuse',1, 'fpe_okPaths.png'))
+
+for s in attrFile:
+    print s
+    pm.treeView( 'FileTreeList_jarry', e=True,addItem = (str(s),'Diffuse'))
+    pm.treeView( 'FileTreeList_jarry', e=True,addItem = (s.fileTextureName.get(), s ))
+    cmds.treeView( 'FileTreeList_jarry', edit=True, dls=(s.fileTextureName.get(),str('  ['+s+']') ) )
+
+
+#pm.treeView( 'FileTreeList', e=True,ibc = ('Diffuse',0,0))
+
+#cmds.treeView('FileTreeList',edit=True,pressCommand=[(1,pressTreeCallBack),(2,pressTreeCallBack),(3,pressTreeCallBack)])
+
+
+cmds.treeView('FileTreeList_jarry',edit=True,selectionChangedCommand=selectionChangedCallBack)
+
+
+cmds.treeView('FileTreeList_jarry',edit=True,itemRenamedCommand=editLabelCallBack)
+
+
+
+
+
+cmds.treeView( 'FileTreeList', edit=True, removeAll = True )
+
+
+cmds.treeView( 'FileTreeList', q=True, ip=('D:/ttt/renders/caodi_d.tif') )
+

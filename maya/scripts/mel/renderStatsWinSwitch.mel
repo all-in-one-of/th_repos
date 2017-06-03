@@ -1,0 +1,124 @@
+
+
+global proc renderStatsProc(string $inputObj,int $swich,int $i)
+{
+     switch ($i)
+     {
+     case 0:
+    setAttr ($inputObj + ".castsShadows") $swich;
+    break;
+    case 1:
+    setAttr ($inputObj + ".receiveShadows") $swich;
+    break;
+    case 2:
+    setAttr ($inputObj + ".motionBlur") $swich;
+    case 3:
+    setAttr ($inputObj + ".primaryVisibility") $swich;
+    break;
+	case 4:
+    setAttr ($inputObj + ".smoothShading") $swich;
+    break;
+    case 5:
+    setAttr ($inputObj + ".visibleInReflections") $swich;
+    break;
+    case 6:
+    setAttr ($inputObj + ".visibleInRefractions") $swich;
+    break;
+
+    }
+}
+
+
+global proc queryWinSwitch()
+{
+int $castsSdS = `checkBox -q -v castsShadowsCB`;
+int $receiveSdS = `checkBox -q -v receiveShadowsCB`;
+int $motionBS = `checkBox -q -v motionBlurCB`;
+int $primaryS = `checkBox -q -v primaryVisibilityCB`;
+int $smoothS = `checkBox -q -v smoothShadingCB`;
+int $vRefleS = `checkBox -q -v visibleInReflectionsCB`;
+int $vRefraS = `checkBox -q -v visibleInRefractionsCB`;
+
+
+string $listSelectArray[] = `ls -sl `;
+select -hierarchy;
+
+string $listS[] = `ls -sl -type mesh -type subdiv -type nurbsSurface`;
+
+string $listS_single;
+for ($listS_single in $listS)
+{
+ renderStatsProc $listS_single $castsSdS 0;
+  renderStatsProc $listS_single $receiveSdS 1;
+
+ renderStatsProc $listS_single $motionBS 2;
+
+ renderStatsProc $listS_single $primaryS 3;
+
+ renderStatsProc $listS_single $smoothS 4;
+
+ renderStatsProc $listS_single $vRefleS 5;
+
+ renderStatsProc $listS_single $vRefraS 6;
+
+
+}
+
+}
+
+
+global proc renderStatsWinSwitch()
+{
+	if(`window -exists renderStatsWinSwitch`)
+		deleteUI renderStatsWinSwitch;
+
+	window -title "renderStatsSwitch" -w 188 -h 250 renderStatsWinSwitch;
+	formLayout mainLayout;
+	checkBox -label "castsShadows"         -value on castsShadowsCB;
+	checkBox -label "receiveShadows"       -value on receiveShadowsCB;
+	checkBox -label "motionBlur"           -value on motionBlurCB;
+	checkBox -label "primaryVisibility"    -value on primaryVisibilityCB;
+	checkBox -label "smoothShading"        -value on smoothShadingCB;
+	checkBox -label "visibleInReflections" -value on visibleInReflectionsCB;
+	checkBox -label "visibleInRefractions" -value on visibleInRefractionsCB;
+
+	separator -height 20 -style "in" sp;
+	button -label "Go!"  -w 10 -h 10 -command "queryWinSwitch()" __clCmdBT;
+
+	formLayout -edit
+				-attachForm castsShadowsCB "top" 10
+				-attachPosition castsShadowsCB "left" 0 5
+
+				-attachControl receiveShadowsCB "top" 5 castsShadowsCB
+				-attachPosition receiveShadowsCB "left" 0 5
+
+				-attachControl motionBlurCB "top" 5 receiveShadowsCB
+				-attachPosition motionBlurCB "left" 0 5
+
+				-attachControl primaryVisibilityCB "top" 5 motionBlurCB
+				-attachPosition primaryVisibilityCB "left" 0 5
+
+				-attachControl smoothShadingCB "top" 5 primaryVisibilityCB
+				-attachPosition smoothShadingCB "left" 0 5
+
+				-attachControl visibleInReflectionsCB "top" 5 smoothShadingCB
+				-attachPosition visibleInReflectionsCB "left" 0 5
+
+				-attachControl visibleInRefractionsCB "top" 5 visibleInReflectionsCB
+				-attachPosition visibleInRefractionsCB "left" 0 5
+				-attachControl sp "top" 0 visibleInRefractionsCB
+				-attachPosition sp "left" 0 2
+				-attachPosition sp "right" 0 99
+
+				-attachControl __clCmdBT "top" 20 visibleInRefractionsCB
+				-attachPosition __clCmdBT "left" 0 1
+				-attachPosition __clCmdBT "bottom" 0 99
+				-attachPosition __clCmdBT "right" 0 99
+
+	mainLayout;
+	window -e -w 233 -h 230 renderStatsWinSwitch;
+
+	showWindow renderStatsWinSwitch;
+
+}
+

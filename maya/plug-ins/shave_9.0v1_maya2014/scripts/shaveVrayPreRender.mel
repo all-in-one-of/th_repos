@@ -1,0 +1,25 @@
+global proc shaveVrayPreRender()
+{
+	/*global*/ string $shaveVrayOldPreRender;
+	
+	//execute original stuff
+	//no need as far we chained it
+	//if($shaveVrayOldPreRender != "")
+	//	eval $shaveVrayOldPreRender;
+	
+	
+	if(`whatIs shaveNode` != "Unknown")
+	{
+		string	$shaveHairShapes[] = `ls -type shaveHair`;
+		if (size($shaveHairShapes) > 0) 
+		{
+			shaveRender -renderStart;
+		
+			//attach shaders for all existing in the scene shave shapes 
+			//shaveVrayShader -create -all;
+		}
+		if(`whatIs shaveClearObsoleteVrayCallbacks` != "Unknown")
+			shaveClearObsoleteVrayCallbacks;
+	}
+	
+}

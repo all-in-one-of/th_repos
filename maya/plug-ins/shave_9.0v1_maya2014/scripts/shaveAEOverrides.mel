@@ -1,0 +1,57 @@
+global string $shaveAEOverrides_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2005
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com).
+//
+
+//
+// This file contains overrides for some of Maya's standard attribute
+// editor scripts so that Shave can add functionality of its own.
+//
+
+//
+// Dummy proc used to locate the file via 'whatIs'.
+//
+global proc shaveAEOverrides()
+{
+}
+
+global proc AElightCommonShadow2 ( string $nodeName )
+{
+		editorTemplate -addControl "shadowRays";
+		editorTemplate -addControl "rayDepthLimit";
+	editorTemplate -endLayout;
+
+
+	//suppressed light parameters
+	editorTemplate -suppress "centerOfIllumination";
+	editorTemplate -suppress "pointCamera";
+	editorTemplate -suppress "matrixWorldToEye";
+	editorTemplate -suppress "matrixEyeToWorld";
+	editorTemplate -suppress "objectId";
+	editorTemplate -suppress "primitiveId";
+	editorTemplate -suppress "raySampler";
+	editorTemplate -suppress "rayDepth";
+	editorTemplate -suppress "lightData";
+	editorTemplate -suppress "opticalFXvisibility";
+	editorTemplate -suppress "renderState";
+
+	// if Maya Fur is loaded (ie. if the Fur shading layout procedure
+	// exists), then end the current layout (ie. Shadows) and add the
+	// Fur shading layout
+	//
+	if ( `exists AEFurShading` ) {
+		editorTemplate -endLayout;
+		eval( "AEFurShading " + $nodeName + " true false" );
+	}
+
+	//
+	// Add the Shave layout, if needed.
+	//
+	eval("shave_AElight \"" + $nodeName + "\"");
+}

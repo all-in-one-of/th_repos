@@ -1,0 +1,356 @@
+global string $shaveShelf_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2005
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com)
+//
+global int $gShaveShelf_version = 6;
+
+
+proc string[] getSelectModeButtonInfo(string $button)
+{
+	string	$result[];
+	string	$label = `shelfButton -q -label $button`;
+
+	switch ($label)
+	{
+		case "Guides":
+			$result[0] = "guide";
+			$result[1] = "shaveSQSelectStrand.xpm";
+			$result[2] = "shaveSelectStrand.xpm";
+		break;
+
+		case "Verts":
+			$result[0] = "vert";
+			$result[1] = "shaveSQSelectVert.xpm";
+			$result[2] = "shaveSelectVert.xpm";
+		break;
+
+		case "Tips":
+			$result[0] = "tip";
+			$result[1] = "shaveSQSelectTip.xpm";
+			$result[2] = "shaveSelectTip.xpm";
+		break;
+
+		case "Roots":
+			$result[0] = "root";
+			$result[1] = "shaveSQSelectRoot.xpm";
+			$result[2] = "shaveSelectRoot.xpm";
+		break;
+	}
+
+	return $result;
+}
+
+
+global proc shaveShelf()
+{
+	//
+	// If Maya's shelf layout doesn't exist, then there's nothing for us to
+	// do.
+	//
+	global string	$gShelfTopLevel;
+
+	if (($gShelfTopLevel == "") || !`shelfTabLayout -exists $gShelfTopLevel`)
+		return;
+
+	//
+	// Has this user ever had the Shave shelf before?
+	//
+	global int	$gShaveShelf_version;
+	int			$oldVersion = 0;
+
+	if (`optionVar -exists shaveShelf_version`)
+		$oldVersion = `optionVar -q shaveShelf_version`;
+
+	optionVar -iv shaveShelf_version $gShaveShelf_version;
+
+	//
+	// %%%	Right now we just blow away the shelf and recreate it if its
+	//		version is out of date.  Before we release this should be
+	//		changed to do a more thoughtful upgrade of the existing shelf.
+	//
+	if ($oldVersion != $gShaveShelf_version) shaveShelf_create;
+}
+
+
+global proc shaveShelf_create()
+{
+	//
+	// If Maya's shelf layout doesn't exist, then there's nothing for us to
+	// do.
+	//
+	global string	$gShelfTopLevel;
+
+	if (($gShelfTopLevel == "") || !`shelfTabLayout -exists $gShelfTopLevel`)
+		return;
+
+	//
+	// Does the Shave shelf already exist?
+	//
+	int	$shelfNum;
+	int	$numShelves = `optionVar -q numShelves`;
+
+	for ($shelfNum = 1; $shelfNum <= $numShelves; $shelfNum++)
+	{
+		string	$name = `optionVar -q ("shelfName" + $shelfNum)`;
+
+		if ($name == "Shave")
+		{
+			//
+			// If the shelf bar is not being displayed, then it's possible
+			// that while the optionVar for our shelf exists, the shelf
+			// itself has not yet been created.  In that case we'll
+			// silently return without doing anything: the fact that the
+			// optionVar exists means that Maya will almost certainly
+			// create the shelf for us the next time the shelf bar is
+			// displayed.
+			//
+			if (!`shelfLayout -exists Shave`) return;
+
+			break;
+		}
+	}
+
+	//
+	// If the shelf already exists, clear it, otherwise create it.
+	//
+	if ($shelfNum <= $numShelves)
+	{
+		string	$children[] = `shelfLayout -q -ca Shave`;
+		string	$child;
+
+		for ($child in $children) deleteUI $child;
+	}
+	else
+	{
+		optionVar -iv numShelves $shelfNum;
+		optionVar -sv ("shelfName" + $shelfNum) "Shave";
+		optionVar -sv ("shelfFile" + $shelfNum) "shelf_Shave";
+		optionVar -iv ("shelfLoad" + $shelfNum) true;
+
+		setParent $gShelfTopLevel;
+
+		shelfLayout Shave;
+	}
+
+	//
+	// Populate the shelf.
+	//
+	// We create a named command for each shelf button.  If we don't do
+	// that then when the user saves out the shelf (or Maya does it for
+	// them) the underlying command will be saved out as well, making it
+	// difficult for us to later changed the command.  With named commands
+	// only the named command will be saved out and we can still change the
+	// underlying command that it represents.
+	//
+	setParent Shave;
+
+	//	Component selection types.
+	shelfButton
+		-label "Guides"
+		-image "shaveSelectStrand.xpm"
+		-command shaveSelectGuides;
+
+	shelfButton
+		-label "Verts"
+		-image "shaveSelectVert.xpm"
+		-command shaveSelectVerts;
+
+	shelfButton
+		-label "Roots"
+		-image "shaveSelectRoot.xpm"
+		-command shaveSelectByRoots;
+
+	shelfButton
+		-label "Tips"
+		-image "shaveSelectTip.xpm"
+		-command shaveSelectTips;
+
+	shelfButton
+		-annotation "Shave: Separator"
+		-enable false;
+
+	// Selection utilities
+	shelfButton
+		-label "Grow Selection"
+		-image "shaveSelectGrow.xpm"
+		-command shaveSelectGrow;
+
+	shelfButton
+		-label "Invert Selection"
+		-image "shaveSelectInverse.xpm"
+		-command shaveSelectInverse;
+
+	shelfButton
+		-label "Rotate Selection Up"
+		-image "shaveSelectRotateUp.xpm"
+		-command shaveSelectRotateUp;
+
+	shelfButton
+		-label "Select Hide"
+		-image "shaveSelectHide.xpm"
+		-command shaveSelectHide;
+
+	shelfButton
+		-label "Select Unhide"
+		-image "shaveSelectUnHide.xpm"
+		-command shaveSelectUnhide;
+
+	shelfButton
+		-annotation "separator"
+		-enable false;
+
+	//	Tools
+	shelfButton
+		-label "Brush"
+		-image1 "shaveBrush.xpm"
+		-command shaveBrushTool
+		-doubleClickCommand shaveBrushToolOptions;
+
+	shelfButton
+		-label "Cut"
+		-image1 "shaveCut.xpm"
+		-command shaveCutTool
+		-doubleClickCommand shaveCutTool;
+
+	shelfButton
+		-annotation "separator"
+		-enable false;
+
+	//	Utilities
+	shelfButton
+		-label "Attenuate"
+		-image1 "shaveAttenuate.xpm"
+		-command shaveAttenuate;
+
+	shelfButton
+		-label "Pop Selected"
+		-image1 "shavePopSelect.xpm"
+		-command shavePopSelected;
+
+	shelfButton
+		-label "Pop Zero-Sized"
+		-image1 "shavePopZeroSized.xpm"
+		-command shavePopZeroSized;
+
+	shelfButton
+		-label "Recomb"
+		-image1 "shaveRecomb.xpm"
+		-command shaveRecomb;
+
+	shelfButton
+		-label "Replace Rest"
+		-image1 "shaveReplaceRest.xpm"
+		-command shaveReplaceRest;
+
+	shelfButton
+		-label "Toggle Collision"
+		-image1 "shaveToggleCollision.xpm"
+		-command shaveTglCollision;
+
+	shelfButton
+		-label "Toggle Hairs"
+		-image1 "shaveToggleHairs.xpm"
+		-command shaveTglHairs;
+
+	shelfButton
+		-label "Toggle Preview"
+		-image1 "shaveToggleFallback.xpm"
+		-command shaveTglFallback;
+
+	shelfButton
+		-label "Lock"
+		-image1 "shaveLock.xpm"
+		-command shaveLockHair;
+
+	shelfButton
+		-label "Unlock"
+		-image1 "shaveUnlock.xpm"
+		-command shaveUnlockHair;
+
+	shelfButton
+		-label "Undo Style"
+		-image1 "shaveUndo.xpm"
+		-command shaveUndo;
+
+	// Additional selection utilities
+	shelfButton
+		-annotation "separator"
+		-enable false;
+
+	shelfButton
+		-label "Split Selection"
+		-image "shaveSplit.xpm"
+		-command shaveSplitSelection;
+
+	shelfButton
+		-label "Merge Selection"
+		-image "shaveMerge.xpm"
+		-command shaveMergeSelection;
+		
+	shelfButton
+		-annotation "separator"
+		-enable false;
+		
+	shelfButton
+		-label "Update Textures"
+		-image "textureRefresh.xpm"
+		-command shaveUpdateTexturesN;
+
+	//
+	// To avoid duplicating annotation strings and possibly getting out of
+	// synch, set each button's annotation string to be the same as its
+	// runTimeCommand.
+	//
+	string	$buttons[] = `shelfLayout -q -ca Shave`;
+	string	$button;
+
+	for ($button in $buttons)
+	{
+		string	$cmd = `shelfButton -q -command $button`;
+
+		if (($cmd != "") && `runTimeCommand -exists $cmd`)
+		{
+			string	$ann = `runTimeCommand -q -ann $cmd`;
+			shelfButton -e -annotation $ann $button;
+		}
+	}
+
+	shelfStyle("nochange", "nochange", "Shave");
+
+	shaveShelf_updateSelectModeButtons(`optionVar -q shaveBrushSelectMode`);
+}
+
+
+global proc shaveShelf_notImplemented(string $op)
+{
+	warning("The '" + $op + "' operation is not yet implemented.");
+}
+
+
+global proc shaveShelf_updateSelectModeButtons(string $mode)
+{
+	if (`shelfLayout -q -exists Shave`)
+	{
+		string	$buttons[] = `shelfLayout -q -ca Shave`;
+		string	$button;
+
+		for ($button in $buttons)
+		{
+			string	$buttonInfo[] = getSelectModeButtonInfo($button);
+
+			if (size($buttonInfo) > 0)
+			{
+				if ($buttonInfo[0] == $mode)
+					shelfButton -e -image $buttonInfo[1] $button;
+				else
+					shelfButton -e -image $buttonInfo[2] $button;
+			}
+		}
+	}
+}

@@ -1,0 +1,263 @@
+global proc UVswiftMover()
+	{
+		if (`window -exists UvswiftMover_window`)
+		deleteUI UvswiftMover_window;
+		window UvswiftMover_window;
+	
+		
+		
+		gridLayout 
+				-numberOfRows 3
+				-numberOfColumns 3
+				-cellWidthHeight 50 50
+				-width 150
+				-height 150
+				UvswiftMover_root;
+			
+			
+			button -l "NW: -1 1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"NW\")"
+					UVbutton_NW;
+			
+			button -l " N:  0 1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"N\")"
+					UVbutton_N;
+			
+			button -l "NE:  1 1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"NE\")"
+					UVbutton_NE;
+			
+			button -l " W:-1  0" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"W\")"
+					UVbutton_W;
+			
+			
+		//	iconTextButton -height 50 -width 50 
+		//			-enable false
+		//			-style "iconOnly"
+		//			-image "posRadial.xpm" 
+		//			CenterImage;
+			formLayout 
+				
+				-backgroundColor 0.757 0.757 0.757
+				picture_frame;
+		
+			
+			picture -height 32 -width 32 			
+					
+	
+					-image "posRadial.xpm" 
+					CenterImage;
+				setParent ..;
+			formLayout -e 
+				-attachForm CenterImage left 9
+				-attachForm CenterImage top 9
+				-attachForm CenterImage right 9
+				-attachForm CenterImage bottom 9
+				picture_frame;
+			
+			button -l "	E:  1 0" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"E\")"
+					UVbutton_E;
+			
+			button -l "SW:-1 -1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"SW\")"
+					UVbutton_SW;
+			
+			button -l " S: 0 -1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"S\")"
+					UVbutton_S;
+						
+			button -l "SE: 1 -1" -height 50 -width 50 
+					-c "UvswiftMover_buttoncmd(\"move\",\"SE\")"
+					UVbutton_SE;
+			
+			
+			
+			popupMenu 
+				-p picture_frame
+	//			-button 3
+				-markingMenu true 
+				UvscaleMenu;
+			
+				menuItem 
+					
+					-p UvscaleMenu
+					-radialPosition W
+					-label "Scale UV  50%"
+					-c "UvswiftMover_buttoncmd(\"scale\",\"50\")"
+					scaledown;
+				
+				menuItem 
+					
+					-p UvscaleMenu
+					-radialPosition E
+					-label "Scale UV  200%"
+					-c "UvswiftMover_buttoncmd(\"scale\",\"200\")"
+					scaleUp;
+				
+		//		menuItem
+		//			-p UvscaleMenu
+		//			-radialPosition N
+		//			-label "Close"
+		//			-c "deleteUI UvswiftMover_window;"
+		//			close_button;
+			
+				
+			
+			
+			
+			
+	setParent UvswiftMover_window;
+	/*	formLayout -e
+				-height 158
+				-width 158
+			
+				-attachForm	   UVbutton_NW "top" 1
+				-attachForm	   UVbutton_NW "left" 1
+				-attachNone    UVbutton_SE "right" 
+
+				
+				-attachForm	   UVbutton_N "top" 1
+				-attachControl UVbutton_N "left" 1 UVbutton_NW
+				
+				-attachForm	   UVbutton_NE "top" 1
+				-attachControl UVbutton_NE "left" 1 UVbutton_N
+				
+				-attachControl UVbutton_W "top" 1 UVbutton_NW
+				-attachForm	   UVbutton_W "left" 1			
+				
+				-attachControl picture_frame "top" 1 UVbutton_N
+				-attachControl picture_frame "left" 1 UVbutton_W
+				-attachControl picture_frame "right" 1 UVbutton_E
+				-attachControl picture_frame "bottom" 1 UVbutton_S
+				
+				-attachControl UVbutton_E "top" 1 UVbutton_NE
+				-attachControl UVbutton_E "left" 1 UVbutton_N
+				
+				-attachControl UVbutton_SW "top" 1 UVbutton_W
+				-attachForm	   UVbutton_SW "left" 1	
+				-attachNone    UVbutton_SW "bottom" 
+				
+				-attachControl UVbutton_S "top" 1 UVbutton_W 
+				-attachControl UVbutton_S "left" 1 UVbutton_SW
+				-attachNone    UVbutton_S "bottom" 
+
+				
+				-attachControl UVbutton_SE "top" 1 UVbutton_E
+				-attachControl UVbutton_SE "left" 1 UVbutton_S
+				-attachNone    UVbutton_SE "bottom" 
+
+				
+				UvswiftMover_root;
+	
+		formLayout -e
+				-height 156
+				-width 156
+				UvswiftMover_root;
+	*/
+	//		window -e 
+				
+	//				-widthHeight 156 184
+	//				-resizeToFitChildren true
+	//				UvswiftMover_window;
+	
+			window -e 
+					-maximizeButton false
+					-minimizeButton true
+			//		-sizeable false
+			//		-resizeToFitChildren true
+					-title "Swift UV"
+					-widthHeight 150 150
+					-resizeToFitChildren true
+					UvswiftMover_window;
+			
+	showWindow UvswiftMover_window;						
+	}
+
+global proc UvswiftMover_buttoncmd(string $type,string $value)
+	{
+		string $select_obj[] = `ls -sl -long`;
+			if (size($select_obj) == 0 )
+			{
+				warning "nothing select";
+				return;
+			}
+			PolySelectConvert 4;
+				if ($type == "move")
+				{
+					switch($value) 
+						{
+						case "NW":
+							polyEditUV -u -1 -v 1 ;
+							select $select_obj;
+							break;
+							
+						case "N":
+							polyEditUV -u 0 -v 1 ;
+							select $select_obj;
+							break;
+							
+						case "NE":
+							polyEditUV -u 1 -v 1 ;
+							select $select_obj;
+							break;
+							
+						case "W":
+							polyEditUV -u -1 -v 0 ;
+							select $select_obj;
+							break;
+							
+						case "E":
+							polyEditUV -u 1 -v 0 ;
+							select $select_obj;
+							break;
+							
+						case "SW":
+							polyEditUV -u -1 -v -1 ;
+							select $select_obj;
+							break;
+							
+						case "S":
+							polyEditUV -u 0 -v -1 ;
+							select $select_obj;
+							break;
+							
+						case "SE":
+							polyEditUV -u 1 -v -1 ;
+							select $select_obj;
+							break;
+							
+						}
+				}else if($type == "scale")
+					switch($value) 
+						{
+						case "50":
+							polyEditUV -pu 0 -pv 0 -su 0.5 -sv 0.5 ;
+
+							select $select_obj;
+							break;
+							
+						case "200":
+							polyEditUV -pu 0 -pv 0 -su 2 -sv 2 ;
+
+							select $select_obj;
+							break;
+						}
+		
+		
+	
+	}
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						

@@ -1,0 +1,878 @@
+global string $AEshaveHairTemplate_fileVersion = "$Revision$";
+
+
+global proc AEshaveHairDimControls(string $node)
+{
+	int	$isInstanced = getAttr($node + ".instancingStatus");
+
+	if ($isInstanced)
+		editorTemplate -dimControl $node "overrideGeomShader" true;
+	else
+		editorTemplate -dimControl $node "overrideGeomShader" false;
+}
+
+proc int is3DelightForMayaLoaded()
+{
+	string $plugins[] = `pluginInfo -q -ls`;
+	for ($curr_plugin in $plugins)
+	{
+		if(match("3delight_for_maya", $curr_plugin) != "")
+      return 1;
+	}
+	
+	return 0;
+}
+
+global proc AEshaveHairCheckDoubleSided(string $node)
+{
+	string $node_attr = $node + ".doubleSided";
+
+	if (objExists($node_attr))
+	{
+		int $value = `getAttr $node_attr`;
+		
+		if (getAttr($node_attr) == 1)
+			editorTemplate -dimControl $node "opposite" true;
+		else
+			editorTemplate -dimControl $node "opposite" false;
+	}
+}
+
+
+
+global proc AEshaveHairTemplate( string $nodeName )
+{
+	// Put our attributes into a scrolled layout field
+	editorTemplate -beginScrollLayout;
+
+		editorTemplate -beginLayout "General Properties" -collapse false;
+			editorTemplate -addControl "hairCount";
+			editorTemplate -addControl "hairSegments";
+			editorTemplate -addControl "hairPasses";
+
+			editorTemplate -callCustom "AEshaveCutTexParmNew"
+				"AEshaveCutTexParmReplace" "shaveTex[29]";
+
+			editorTemplate -callCustom "AEshaveDensityTexParmNew"
+				"AEshaveDensityTexParmReplace" "shaveTex[28]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "scale";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[41]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "randScale";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[36]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "rootThickness";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[20]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "tipThickness";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[37]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "displacement";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[43]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "active";
+			editorTemplate -label "Use Instance Obj"
+					-addControl "instancingStatus" "AEshaveHairDimControls";
+			editorTemplate -addControl "interpolateGuides";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Material Properties" -collapse false;
+
+			editorTemplate -addControl "selfShadow";
+			editorTemplate -addControl "geomShadow";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "specular";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[4]";
+				
+			editorTemplate -callCustom "AEshaveColourNew"
+				"AEshaveColourReplace" "specularTint";
+
+			AEshaveSpacer();
+
+			//editorTemplate -addControl "specular2";
+			//editorTemplate -callCustom "AEshaveTexParmNew"
+			//	"AEshaveTexParmReplace" "shaveTex[4]";
+				
+			editorTemplate -callCustom "AEshaveColourNew"
+				"AEshaveColourReplace" "specularTint2";
+				
+			AEshaveSpacer();
+
+			editorTemplate -addControl "gloss";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[5]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "amb/diff";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[6]";
+
+			AEshaveSpacer();
+
+			editorTemplate -callCustom "AEshaveColourNew"
+				"AEshaveColourReplace" "hairColor";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "hairColorTexture";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "hueVariation";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[12]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "valueVariation";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[39]";
+
+			AEshaveSpacer();
+
+			editorTemplate -callCustom "AEshaveColourNew"
+				"AEshaveColourReplace" "rootColor";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "rootHairColorTexture";
+
+			AEshaveSpacer();
+
+			editorTemplate -callCustom "AEshaveColourNew"
+				"AEshaveColourReplace" "mutantHairColor";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "mutantHairColorTexture";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "percentMutantHairs";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[16]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "tipFade";
+			editorTemplate -addControl "squirrel";
+			editorTemplate -addControl "overrideGeomShader";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Flyaway Hairs" -collapse false;	
+		
+			editorTemplate -addControl "flyawayPerc";
+			
+			editorTemplate -addControl "flyawayStren";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[48]";
+			
+			editorTemplate -addControl "messStren";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[47]";
+				
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Clumping" -collapse false;
+		
+			editorTemplate -addControl "clumps";
+			
+			editorTemplate -label "Strength" -addControl "clumpsStrength";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[49]";
+			
+			editorTemplate -label "Scruffle" -addControl "clumpsScruffle";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[55]";
+				
+				
+			editorTemplate -label "Flatness" -addControl "clumpsFlatness";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[54]";
+				
+			editorTemplate -label "Rotation" -addControl "clumpsRotStren";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[50]";
+															
+			editorTemplate -label "Rotation Offset" -addControl "clumpsRotOffset";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[52]";
+				
+							
+			editorTemplate -label "Randomize Rotation" -addControl "clumpsRandomize";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[53]";
+				
+			editorTemplate -label "Clump Colors" -addControl "clumpsColStren";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[51]";
+				
+			
+		
+		editorTemplate -endLayout;	
+		/*
+		editorTemplate -beginLayout "Procedurals" -collapse false;
+		
+			editorTemplate -callCustom "proceduralsAddUI" "proceduralsEditUI" $nodeName;
+			
+		editorTemplate -endLayout;
+		*/
+				
+
+		editorTemplate -beginLayout "Frizz Properties" -collapse true;
+			editorTemplate -addControl "rootFrizz";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[0]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "tipFrizz";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[24]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "frizzXFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[1]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "frizzYFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[30]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "frizzZFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[31]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "frizzAnim";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[32]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "animSpeed";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[33]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "frizzAnimDir";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Feild Displace" -collapse true;
+			editorTemplate -addControl "displaceStrength";
+		editorTemplate -endLayout;
+
+
+		editorTemplate -beginLayout "Kink Properties" -collapse true;
+			editorTemplate -addControl "rootKink";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[38]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "tipKink";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[2]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "kinkXFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[3]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "kinkYFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[34]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "kinkZFrequency";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[35]";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Multi Strand Properties" -collapse true;
+			editorTemplate -addControl "multiStrandCount";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[25]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "rootSplay";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[26]";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "tipSplay";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[27]";
+
+			AEshaveSpacer();
+			
+		    editorTemplate  -label "Twist" -addControl "multAsp";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[44]";
+
+			AEshaveSpacer();
+			
+			editorTemplate  -addControl "Offset";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[45]";
+
+			AEshaveSpacer();
+			
+			editorTemplate  -addControl "Aspect";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[46]";
+
+			AEshaveSpacer();
+
+			editorTemplate -label "Randomize" -addControl "randomizeMulti";
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[42]";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Dynamics Properties" -collapse true;
+			editorTemplate -addControl "enableCollision";
+			editorTemplate -addControl "disableDynamics";
+
+			AEshaveSpacer();
+
+			editorTemplate -addControl "stiffness";		
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[8]";
+
+			AEshaveSpacer();
+
+			editorTemplate -label "Root Hold" -addControl "rootStiffness";		
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[21]";
+
+			AEshaveSpacer();
+
+			editorTemplate -label "Dampen" -addControl "dampening";		
+			editorTemplate -callCustom "AEshaveTexParmNew"
+				"AEshaveTexParmReplace" "shaveTex[40]";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Rib Properties" -collapse true;
+			editorTemplate -addControl "ribStuff";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Nurbs Tesselation Properties" -collapse true;
+			editorTemplate -addControl "uSubdivisions";
+			editorTemplate -addControl "vSubdivisions";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Subdiv Tesselation Properties" -collapse true;
+			editorTemplate -addControl "Depth";
+			editorTemplate -addControl "sampleCount";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Hair Display" -collapse true;
+		//	editorTemplate -addControl "displayGuides";
+		//	editorTemplate -addControl "fallbackCount";
+			editorTemplate -l "Display Hair As" -addControl "displayAs";			
+		//	editorTemplate -l "Display/Actual Ratio" -addControl "displayHairRatio";//goes to globals
+		//	editorTemplate -l "Max Hairs" -addControl "displayHairMax";
+		//	editorTemplate -l "Fallback Ratio" -addControl "displayFallbackRatio";	//goes to globals
+		//	editorTemplate -l "Max Segments" -addControl "displaySegmentLimit";		//goes to globals
+		//	editorTemplate -l "Guide Thickness" -addControl "displayGuideThick";	//goes go globals
+		//	editorTemplate -l "Use Transparency" -addControl "displayHairTransprency"; //goes to globals
+		//	editorTemplate -l "Use SSAO" -addControl "displayHairSsao";				//goes to globals
+		//	editorTemplate -l "Hair Transparency" -addControl "displayHairTransprencyVal";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Random Seed" -collapse true;
+		
+			editorTemplate -label "Offset" -addControl "randomSeedOffset";
+			
+		editorTemplate -endLayout;	
+
+			//
+		// We don't want to see these.
+		//
+		if ( false /*!is3DelightForMayaLoaded()*/)
+		{
+			editorTemplate -suppress "castsShadows";
+			editorTemplate -suppress "receiveShadows";
+			editorTemplate -suppress "motionBlur";
+			editorTemplate -suppress "primaryVisibility";
+			editorTemplate -suppress "smoothShading";
+			editorTemplate -suppress "visibleInReflections";
+			editorTemplate -suppress "visibleInRefractions";
+			editorTemplate -suppress "doubleSided";
+			editorTemplate -suppress "opposite";
+		}
+		else
+		{
+			editorTemplate -beginLayout "Render Stats";
+				editorTemplate -beginNoOptimize;
+				editorTemplate -addControl "castsShadows";
+				editorTemplate -addControl "receiveShadows";
+				editorTemplate -addControl "motionBlur";
+				editorTemplate -addControl "primaryVisibility";
+				editorTemplate -addControl "smoothShading";
+				editorTemplate -addControl "visibleInReflections";
+				editorTemplate -addControl "visibleInRefractions";
+				editorTemplate -interruptOptimize;
+				editorTemplate -addControl "doubleSided" "AEshaveHairCheckDoubleSided";
+				editorTemplate -addControl "opposite";
+				editorTemplate -endNoOptimize;
+			editorTemplate -endLayout;
+		}
+
+		editorTemplate -suppress "cachedBBox";
+		editorTemplate -suppress "hairColor";
+		editorTemplate -suppress "hairColorTexture";
+		editorTemplate -suppress "hairColorTextureR";
+		editorTemplate -suppress "hairColorTextureG";
+		editorTemplate -suppress "hairColorTextureB";
+		editorTemplate -suppress "instanceSource";
+		editorTemplate -suppress "mutantHairColor";
+		editorTemplate -suppress "mutantHairColorTexture";
+		editorTemplate -suppress "rootHairColorTexture";
+		editorTemplate -suppress "rootColor";
+		editorTemplate -suppress "rootColor";
+		editorTemplate -suppress "shaveIsShadows";
+		editorTemplate -suppress "shaveTex";
+		editorTemplate -suppress "specularTint";
+		editorTemplate -suppress "specularTint2";
+		editorTemplate -suppress "textureCacheUpdated";
+		editorTemplate -suppress "shaveVersion";
+		editorTemplate -suppress "procedural";
+		
+
+		//
+		// We don't want to see these inherited attributes, either.
+		//
+		editorTemplate -suppress "collisionDepthVelocityIncrement";
+		editorTemplate -suppress "collisionDepthVelocityMultiplier";
+		editorTemplate -suppress "collisionOffsetVelocityIncrement";
+		editorTemplate -suppress "collisionOffsetVelocityMultiplier";
+		editorTemplate -suppress "renderLayerInfo";
+		editorTemplate -suppress "maxVisibilitySamplesOverride";
+		editorTemplate -suppress "maxVisibilitySamples";
+		editorTemplate -suppress "geometryAntialiasingOverride";
+		editorTemplate -suppress "antialiasingLevel";
+		editorTemplate -suppress "shadingSamplesOverride";
+		editorTemplate -suppress "shadingSamples";
+		editorTemplate -suppress "maxShadingSamples";
+		editorTemplate -suppress "volumeSamplesOverride";
+		editorTemplate -suppress "volumeSamples";
+		editorTemplate -suppress "depthJitter";
+		editorTemplate -suppress "ignoreSelfShadowing";
+		editorTemplate -suppress "compInstObjGroups";
+		editorTemplate -suppress "tweak";
+		editorTemplate -suppress "relativeTweak";
+		editorTemplate -suppress "controlPoints";
+		editorTemplate -suppress "weights";
+		editorTemplate -suppress "uvSet";
+		editorTemplate -suppress "currentUVSet";
+		editorTemplate -suppress "displayImmediate";
+		editorTemplate -suppress "displayColors";
+		editorTemplate -suppress "displayColorChannel";
+		editorTemplate -suppress "currentColorSet";
+		editorTemplate -suppress "colorSet";
+		editorTemplate -suppress "boundingBoxScale";
+		editorTemplate -suppress "featureDisplacement";
+		editorTemplate -suppress "initialSampleRate";
+		editorTemplate -suppress "extraSampleRate";
+		editorTemplate -suppress "textureThreshold";
+		editorTemplate -suppress "normalThreshold";
+
+
+		//
+		// Handle the standard node attributes.
+		//
+		AEshapeTemplate $nodeName;
+
+		//
+		// Display any dynamically added attributes.
+		//
+		editorTemplate -addExtraControls;
+
+	editorTemplate -endScrollLayout;
+
+	AEshaveHairDimControls($nodeName);
+}
+
+
+global proc AEshaveSpacer()
+{
+	editorTemplate -callCustom "AEshaveSeparator" "AEshaveDummy";
+}
+
+
+global proc AEshaveSeparator()
+{
+	separator -style "none";
+}
+
+global proc AEshaveDummy()
+{
+}
+
+
+global proc AEshaveColourNew(string $attrName)
+{
+	string	$tokens[];
+	int		$numTokens = tokenize($attrName, ".", $tokens);
+	string	$sliderName = $tokens[$numTokens - 1] + "_slider";
+
+	attrColorSliderGrp -showButton no $sliderName;
+
+	AEshaveColourReplace($attrName);
+}
+
+
+global proc AEshaveColourReplace(string $attrName)
+{
+	string	$tokens[];
+	int		$numTokens = tokenize($attrName, ".", $tokens);
+	string	$attrPortion = $tokens[$numTokens-1];
+	string	$sliderName = $attrPortion + "_slider";
+	string	$label = $attrPortion;
+
+	if ($attrPortion == "hairColor")
+		$label = "Tip Color";
+	else if($attrPortion == "specularTint2")
+		$label = "Secondary Specular";
+	else
+		$label = interToUI($attrPortion);
+
+	attrColorSliderGrp -e -l $label -at $attrName $sliderName;
+}
+
+
+global proc AEshaveTexParmNew (string $attrName)
+{
+    string $buffer[];
+    int $numTokens = `tokenize $attrName "[" $buffer`;
+	string $grpnam;
+	if($numTokens > 1)
+	{
+		int $numTokens = `tokenize $buffer[0] "." $buffer`;
+		$grpnam = $buffer[1];
+		int $numTokens = `tokenize $attrName "[" $buffer`;
+		int $numTokens = `tokenize $buffer[1] "]" $buffer`;
+		$grpnam = $grpnam + $buffer[0];
+	}
+	else
+	{
+		int $numTokens = `tokenize $buffer[0] "." $buffer`;
+		$grpnam = $buffer[1];
+		$grpnam = $grpnam + "Grp";
+	}
+	attrNavigationControlGrp 
+		-l ""
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		$grpnam;
+}
+
+
+//
+//  Procedure Name:
+//	AEshaderBumpReplace
+//
+
+global proc AEshaveTexParmReplace (string $attrName)
+{
+    string $buffer[];
+    int $numTokens = `tokenize $attrName "[" $buffer`;
+	string $grpnam;
+	if($numTokens > 1)
+	{
+		int $numTokens = `tokenize $buffer[0] "." $buffer`;
+		$grpnam = $buffer[1];
+		int $numTokens = `tokenize $attrName "[" $buffer`;
+		int $numTokens = `tokenize $buffer[1] "]" $buffer`;
+		$grpnam = $grpnam + $buffer[0];
+	}
+	else
+	{
+		int $numTokens = `tokenize $buffer[0] "." $buffer`;
+		$grpnam = $buffer[1];
+		$grpnam = $grpnam + "Grp";
+	}
+	attrNavigationControlGrp -edit
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		$grpnam;
+}
+
+global proc AEshaveDensityTexParmNew (string $attrName)
+{
+	attrNavigationControlGrp 
+		-l "Density Map"
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		"densityGrp";
+}
+
+
+//
+//  Procedure Name:
+//	AEshaderBumpReplace
+//
+
+global proc AEshaveDensityTexParmReplace (string $attrName)
+{
+	attrNavigationControlGrp -edit
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		"densityGrp";
+}
+
+global proc AEshaveCutTexParmNew (string $attrName)
+{
+	attrNavigationControlGrp 
+		-l "Cut Map"
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		"cutGrp";
+	;
+}
+
+
+//
+//  Procedure Name:
+//	AEshaderBumpReplace
+//
+
+global proc AEshaveCutTexParmReplace (string $attrName)
+{
+	attrNavigationControlGrp -edit
+		-at $attrName
+		-ce ("shavePadCmd AEshaveParmConnect 3 " + $attrName)
+		"cutGrp";
+}
+
+
+global proc AEshaveParmConnect(string $dest, string $dummy, string $src)
+{
+	if ($src == "")
+	{
+		string $conns[] = `listConnections -p yes -s yes -d no $dest`;
+
+		if (size($conns) > 0) disconnectAttr $conns[0] $dest;
+	}
+	else
+	{
+		defaultNavigation -ce -d $dest -s $src;
+	}
+}
+
+global proc proceduralsAddUI(string $shaveNode)
+{
+	columnLayout 
+		-columnAttach both 50
+		-columnWidth 400;
+	{
+		textScrollList
+			-numberOfRows 6
+			-selectCommand ("shaveSelectProcedural " + $shaveNode)
+			shaveProceduralList;
+		
+		updateShaveProceduralList $shaveNode;
+			
+		columnLayout shaveProceduralLayout;
+		{
+			text
+				-label "Procedural UI goes there.";
+				
+			setParent ..;
+		}
+		
+		separator 
+			-style "none"
+			-height 6; 
+		
+		button 
+		-label  "Update View";
+		
+		separator 
+			-style "none"
+			-height 6; 
+		
+		setParent ..;
+		
+	}
+}
+
+global proc proceduralsEditUI(string $shaveNode)
+{
+		updateShaveProceduralList $shaveNode;
+}
+
+global proc updateShaveProceduralList(string $shaveNode)
+{
+	if(`textScrollList -exists shaveProceduralList`)
+	{
+		textScrollList
+			-edit
+			-selectCommand ("shaveSelectProcedural " + $shaveNode)
+			shaveProceduralList;
+			
+		textScrollList 
+			-edit
+			-removeAll
+			shaveProceduralList;
+			
+		//	
+		//add items to the list
+		//
+		int    $num = `shaveProcedurals -query -total`;
+		for($i = 0; $i < $num; $i++)
+		{
+			string $name = `shaveProcedurals  -name $i -query`;
+			textScrollList
+				-edit
+				-append $name
+				shaveProceduralList;
+		}
+		//
+		// update selection
+		//
+		updateShaveProceduralSel  $shaveNode;
+	}
+}
+
+global proc updateShaveProceduralSel(string $shaveNode)
+{
+	if(`textScrollList -exists shaveProceduralList`)
+	{
+		textScrollList
+				-edit
+				-deselectAll
+				shaveProceduralList;
+				
+		string $buffer[];
+		string $shaveNodeName;
+		$numTokens = `tokenize $shaveNode "." $buffer`;
+		if($numTokens > 0)
+			$shaveNodeName = $buffer[0];
+		else
+			$shaveNodeName = $shaveNode;
+			
+		string $pattr = ($shaveNodeName +".procedural");
+		if (`connectionInfo -isDestination $pattr`) 
+		{
+			string $src = `connectionInfo -sourceFromDestination $pattr`;
+			
+			string $buffer[];
+			string $procedural = "";	
+			$numTokens = `tokenize $src "." $buffer`;
+			if($numTokens > 0)
+				$procedural = $buffer[0];
+			
+			string $name  = `nodeType $procedural`;
+			
+			////////////
+			//print $name; print "\n";
+			////////////
+			
+			int    $num = `shaveProcedurals -query -total`;
+			for($i = 0; $i < $num; $i++)
+			{
+				string $name2 = `shaveProcedurals  -name $i -query`;
+				if($name == $name2)
+					textScrollList
+						-edit
+						-selectIndexedItem ($i+1)
+						shaveProceduralList;
+			}
+		}
+	}
+}
+
+global proc shaveSelectProcedural(string $shaveNode)
+{
+	if(`textScrollList -exists shaveProceduralList`)
+	{
+		string $buffer[];
+			string $shaveNodeName;
+		$numTokens = `tokenize $shaveNode "." $buffer`;
+		if($numTokens > 0)
+			$shaveNodeName = $buffer[0];
+		else
+			$shaveNodeName = $shaveNode;
+			
+		string $dst = ($shaveNodeName +".procedural");
+			
+		//
+		// disconnect old
+		//
+		if (`connectionInfo -isDestination $dst`) 
+		{
+			string $src = `connectionInfo -sourceFromDestination $dst`;
+			//if( size($srcs) == 1)
+			//{
+				//string $src = $srcs[0];
+				disconnectAttr $src $dst;
+				
+				//deleter procedural node
+				string $buffer[];
+				string $proctodel = "";	
+				$numTokens = `tokenize $src "." $buffer`;
+				if($numTokens > 0)
+				{
+					$proctodel = $buffer[0];
+					delete $proctodel;
+				}
+			//}
+		}
+		//
+		//	connect new one 
+		//
+		string $sel[] = `textScrollList -query -selectItem shaveProceduralList`;
+		if(size($sel) == 1)
+		{
+			string $name = $sel[0];
+			$procName = `createNode $name`;
+			if($procName != "")
+			{
+				select $shaveNodeName; 
+				
+				string $src = ($procName +".shave");
+				
+				connectAttr $src $dst;
+				if(`isConnected $src $dst`)
+				{
+					/////
+					//print " -- connected --\n";
+					/////
+					
+				}
+			}
+			updateShaveProceduralSel  $shaveNode;
+		}
+	}
+}

@@ -1,0 +1,140 @@
+global proc refreshReferneceFile()
+{
+    //获取当前文件的所有reference文件，
+    string $get_references[] = `ls -references`;
+    //去除不相关的referenceNode
+    string $temp[] = $get_references;
+    size($get_references);
+    for($i in $get_references)
+    {
+        if(size(match("sharedReferenceNode[0-9]",$i))||size(match("_UNKNOWN_REF_NODE_",$i)))
+        {
+            print "remove sharedReferenceNode...\n";
+            $temp =`stringArrayRemove {$i} $temp`;
+        }
+        else
+        {
+            print($i + "\n");
+        }
+    }
+    $get_references = $temp;
+    $temp = {};
+    string $referencePath;
+    string $notExistsFile[] = {};
+    for($i in $get_references)
+    {
+        string $filePath = `referenceQuery -filename $i`;
+        //判断是否有重复调用一个文件的，有的话，使得文件名一致
+        tokenize $filePath "{" $temp;
+        $filePath = $temp[0];
+        print "原始reference文件路径--->>>   ";
+        print $filePath;
+        $referencePath = `match ".*_publish/" $filePath`;
+        //查询当前_publish文件夹下面的文件，把maya的reference替换为最新的文件，
+        string $fileName[] = stringArrayCatenate(`getFileList -folder $referencePath -filespec "*.ma"`,`getFileList -folder $referencePath -filespec "*.mb"`);
+        if(size($fileName)==1)
+        {
+            print "\n新的reference文件路径--->>>   ";
+            print $referencePath;
+            print $fileName;
+            //print "正在查找替换文件，请等待......\n";
+            $filePath = $referencePath + $fileName[0];
+            //开始替换
+            file -loadReference $i -options "v=0;" $filePath; 
+            print "正在查找替换文件，请耐心等待............\n";
+            print "\n";
+            
+        }
+        else if(!size($fileName))
+        {
+            print "\n没有匹配的文件\n";
+            $notExistsFile = stringArrayCatenate($notExistsFile,{$filePath});
+            //break;
+        }
+        else
+        {
+            string $multipleFilters = "Maya Files (*.ma *.mb);;Maya ASCII (*.ma);;Maya Binary (*.mb);;All Files (*.*)";
+            string $command = "global string $currentRefName_reference = \"" + $i + "\";";
+            eval($command);
+            $command = "global string $currentPath_reference = \"" + $filePath + "\";";
+            eval($command);
+            $command = "global string $replacePath_reference = \"" + $referencePath + "\";";
+            eval($command); 
+            string $result[] = `fileDialog2 -fileMode 1 
+                -caption "Select Reference File" 
+                -fileFilter $multipleFilters 
+                -selectFileFilter "Maya Files" 
+                -dialogStyle 2 
+                -optionsUICreate "referenceOptionsUISetup" 
+                -selectionChanged "referenceSelectionChanged"
+                -startingDirectory $referencePath`;
+            while(!size($result))
+            {
+                confirmDialog -title "提示" -message "请至少选择一个文件maya文件，否则会损坏当前文件，" -icon "information"
+                    -button "Yes" -button "No" -defaultButton "Yes"
+                    -cancelButton "No" -dismissString "No";
+                $result = `fileDialog2 -fileMode 1 
+                    -caption "Select Reference File" 
+                    -fileFilter $multipleFilters 
+                    -selectFileFilter "Maya Files" 
+                    -dialogStyle 2 
+                    -optionsUICreate "referenceOptionsUISetup" 
+                    -selectionChanged "referenceSelectionChanged"
+                    -startingDirectory $referencePath`;
+            }
+            if(size($result))
+            {
+                print "\n新的reference文件路径--->>>   ";
+                print $referencePath;
+                print $fileName;
+                //print "正在查找替换文件，请等待......\n";
+                $filePath = $referencePath + $fileName[0];
+                //开始替换
+                file -loadReference $i -options "v=0;" $result[0]; 
+                print "正在查找替换文件，请耐心等待............\n";
+                print "\n";
+            }
+            
+        }
+        
+    }
+    if(size($notExistsFile))
+    {
+        string $files;
+        for($fileOne in $notExistsFile)
+        {
+            $files = $files + "\n" +$fileOne;
+        }
+        confirmDialog -title "提示" -message ("\n以下 " + size($notExistsFile) + " 个 reference 文件不存在，或者此文件还未更新到服务器\n   "+ $files +"   \n") -icon "information"
+                    -button "Yes" -button "No" -defaultButton "Yes"
+                    -cancelButton "No" -dismissString "No";
+    }
+}
+global proc referenceOptionsUISetup(string $parent)
+{
+setParent $parent;
+$parent = `scrollLayout -childResizable true`;
+global string $currentRefName_reference;
+global string $currentPath_reference;
+global string $replacePath_reference;
+
+// generate some UI which will show up in the options tab of the Maya file dialog
+columnLayout -adj true;
+text -label "Reference 说明";
+text -label "当前Reference名称为:   "   -align "left";
+text -label $currentRefName_reference -align "left";
+text -label "  "   -align "left";
+text -label "替换前Reference路径为:   "   -align "left";
+text -label $currentPath_reference -align "left";
+text -label "  "   -align "left";
+text -label "替换后Reference路径为:   "   -align "left";
+text -label $replacePath_reference -align "left";
+text -label "  "   -align "left";
+}
+
+global proc referenceSelectionChanged(string $parent, string $selection)
+{
+setParent $parent;
+print ("$selection: " + $selection + "\n");
+}
+//refreshReferneceFile();

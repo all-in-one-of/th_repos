@@ -1,0 +1,20 @@
+global proc shaveVrayPostRender()
+{
+	//global string $shaveVrayOldPostRender;
+	//execute original stuff
+	//we do not need to to this as far we chained attributes
+	//if($shaveVrayOldPostRender != "")
+	//	eval $shaveVrayOldPostRender;
+	
+	if(`whatIs shaveNode` != "Unknown")
+	{
+		string	$shaveHairShapes[] = `ls -type shaveHair`;
+		if (size($shaveHairShapes) > 0) 
+		{
+			shaveRender -renderEnd;
+		
+			//all shaders we created on pre-render step 
+			//shaveVrayShader -delete -all;
+		}
+	}
+}

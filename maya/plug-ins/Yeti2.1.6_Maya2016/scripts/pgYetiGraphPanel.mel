@@ -1,0 +1,319 @@
+//
+// pgYetiGraphPanel - Yeti Graph Panel
+// 
+// (c) 2010-Present Peregrine Labs a division of Peregrine Visual Storytelling Ltd.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Peregrine Visual Storytelling Ltd. ("Peregrine") 
+// and/or its licensors, which is protected by U.S. and Canadian federal 
+// copyright law and by international treaties.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. PEREGRINE
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE 
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL PEREGRINE AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF PEREGRINE AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+//
+
+// builds the menu items to for all the different node types, there's
+// a good chance we'll need to do this in multiple places
+
+global int $gPgYetiGraphEditorPaneSize = 25;
+
+global proc pgYetiBuildCreateNodeMenuItems(string $parent)
+{	
+	string $nodeTypeName;
+	string $nodeTypeNames[] = `pgYetiGraph -nodeTypeNameList`;
+	
+	for ($nodeTypeName in $nodeTypeNames)
+	{
+		string $capitalizedNodeTypeName = capitalizeString($nodeTypeName);
+		menuItem -label $capitalizedNodeTypeName -command ("pgYetiGraph -create -type " + $nodeTypeName) ("pgYetiGraphPanelCreate" + $nodeTypeName + "MenuItemFor" + $parent);
+	}
+}
+
+global proc pgYetiSelectNodeColor()
+{
+	string $result, $buffer[];
+	$result = `colorEditor`;
+	tokenize($result, $buffer);
+	if ("1" == $buffer[3]) {
+	    eval( "pgYetiMayaUI -setSelectedNodesColor " + $buffer[0] + " " + $buffer[1] + " " + $buffer[2] );
+	}
+}
+
+global proc pgYetiRebuildSceneNodesMenu(string $sceneNodesMenu)
+{	
+	setParent -m $sceneNodesMenu;
+	
+	string $yetiNodes[] = `ls -dag -type pgYetiMaya`;
+	string $selectedYetiNodes[] = `ls -sl -dag -type pgYetiMaya`;
+	
+	menu -e -deleteAllItems $sceneNodesMenu;
+	string $yetiNode;
+	for ($yetiNode in $yetiNodes)
+	{
+	    string $isSelected = "";
+		if ($yetiNode == $selectedYetiNodes[0])
+		{
+			$isSelected = "* ";
+		}
+		menuItem -label ( $isSelected + $yetiNode ) -command ("select -r " + $yetiNode);
+	}
+}
+
+global proc pgYetiRebuildGraphPanelMenus(string $panelName)
+{
+	//
+	//  Description:
+	//      This (re)builds the menus for a pgYetiGraphPanel and populates them accordingly
+	global int $gPgYetiGraphPanelCheckBoxStates[2];
+	global string $gPgYetiGraphPanelSceneNodesMenu;
+	
+	setParent $panelName;
+		menu -parent $panelName -tearOff true -label "Create" pgYetiGraphPanelCreateMenu;
+			pgYetiBuildCreateNodeMenuItems("pgYetiGraphPanelCreateMenu");
+			menuItem -divider true;
+			menuItem -label "Note" -command "pgYetiGraph -addNote \"\"" pgYetiGraphPanelCreateNoteMenuItem;	
+		menu -parent $panelName -label "View" pgYetiGraphPanelViewMenu;
+			menuItem -label "Display As Heat Map" -checkBox $gPgYetiGraphPanelCheckBoxStates[0] pgYetiGraphPanelDisplayAsHeatMapMenuItem;
+			menuItem -label "Auto Connect Nodes" -checkBox $gPgYetiGraphPanelCheckBoxStates[1] pgYetiGraphPanelAutoConnectNodesMenuItem;
+			setParent ..;
+		menu -parent $panelName -label "Utilities" pgYetiGraphPanelUtilitiesMenu;
+			menuItem -label "Set Custom Node Colors" -command "pgYetiSelectNodeColor" pgYetiGraphPanelSetCustomNodeColorsMenuItem;
+			menuItem -label "Reset Node Colors" -command "" pgYetiGraphPanelResetNodeColorsMenuItem;
+			setParent ..;
+		string $sceneNodesMenu = `menu -parent $panelName -label "Scene Nodes" pgYetiGraphPanelSceneNodesMenu`;
+		menu -e -postMenuCommand
+	   		("pgYetiRebuildSceneNodesMenu "+$sceneNodesMenu) $sceneNodesMenu;
+}
+
+global proc string pgYetiBuildGraphEditorToolbar(string $parent)
+{
+	string $toolBar = `scrollLayout -height 42 -enableBackground true -backgroundColor 0.18 0.18 0.18`;
+	
+	string $nodeTypeName;
+	string $nodeTypeNames[] = `pgYetiGraph -nodeTypeNameList`;
+	$nodeTypeCount = size($nodeTypeNames);
+		
+	gridLayout -numberOfColumns $nodeTypeCount -numberOfRows 1 -cellWidthHeight 36 36;
+	$index = 0;
+	for ($nodeTypeName in $nodeTypeNames)
+	{
+		string $capitalizedNodeTypeName = capitalizeString($nodeTypeName);
+		float $nodeTypeColor[] = `pgYetiGraph -nodeTypeColor $index`;
+		iconTextButton -style "iconOnly"
+		    -image1 ( "pgYeti_" + $nodeTypeName + ".png" ) 
+			-command ("pgYetiGraph -create -type " + $nodeTypeName) 
+			-backgroundColor $nodeTypeColor[0] $nodeTypeColor[1] $nodeTypeColor[2]
+			-annotation $capitalizedNodeTypeName
+			-w 34 -h 34
+			-mw 2 -mh 2
+			-flat true;
+			
+		$index = $index + 1;
+	}
+	
+	setParent($parent);
+		
+	return $toolBar;
+}
+
+global proc pgYetiGraphPanelCreateCallback(string $panelName) 
+{
+//
+//  Description:
+//      Create any editors unparented here and do
+//      any other initialization required.
+//
+//      In this example we will only declare a global array to
+//        maintain some state information.
+//
+	if (!`scriptedPanel -exists pgYetiGraphPanel `)
+	{
+		scriptedPanel -unParent -menuBarVisible true -type pgYetiGraphPanelType -label "Yeti - Graph Editor" pgYetiGraphPanel;
+	}
+}
+
+
+global proc pgYetiGraphPanelInitCallback(string $panelName) {
+//
+//  Description:
+//      Re-initialize the panel on file -new or file -open.
+//
+//      In this example we will only re-init the global array.
+//
+	if (!`scriptedPanel -exists pgYetiGraphPanel `)
+	{
+		scriptedPanel -unParent -menuBarVisible true -type pgYetiGraphPanelType -label "Yeti - Graph Editor" pgYetiGraphPanel;
+	}
+}
+
+global proc string pgYetiCreateGraphEditor(string $parent)
+{
+    string $graphEditor = `pgYetiMayaUI -createGraphEditor`;
+	
+	setParent($parent);
+	
+	return $graphEditor;
+}
+
+global proc pgYetiGrapnPanelPaneMovedCallback()
+{
+	global int $gPgYetiGraphEditorPaneSize;
+
+	int $paneSizes[] = `paneLayout -q -paneSize yetiGraphPanelPaneLayout`;
+		
+	$gPgYetiGraphEditorPaneSize = $paneSizes[0];
+}
+
+global proc pgYetiGraphPanelAddCallback(string $panelName) 
+{
+//
+//  Description:  Create UI and parent any editors.
+//
+	global string $gPgYetiGraphEditor;
+	global int $gPgYetiGraphEditorPaneSize;
+
+	pgYetiRebuildGraphPanelMenus($panelName);
+	
+	setParent($panelName);
+
+	string $masterLayout = `formLayout -numberOfDivisions 100 yetiGraphPanelMasterLayout`;
+		string $toolbar = `pgYetiBuildGraphEditorToolbar($masterLayout)`;
+        
+		string $graphPaneLayout = `paneLayout -configuration "vertical2" -separatorMovedCommand pgYetiGrapnPanelPaneMovedCallback -paneSize 1 $gPgYetiGraphEditorPaneSize 100 yetiGraphPanelPaneLayout`;				
+			string $panel = `outlinerPanel -parent $graphPaneLayout`;
+			string $outliner = `outlinerPanel -query -outlinerEditor $panel`;
+			outlinerEditor -edit
+		    	-mainListConnection "worldList"
+			    -selectionConnection "modelList"
+			    -showShapes false
+			    -showReferenceNodes false
+			    -showReferenceMembers false
+			    -showAttributes false
+			    -showConnected false
+			    -showAnimCurvesOnly false
+			    -autoExpand false
+			    -showDagOnly true
+			    -ignoreDagHierarchy false
+			    -expandConnections false
+			    -showCompounds true
+			    -showNumericAttrsOnly false
+			    -highlightActive true
+			    -autoSelectNewObjects false
+			    -doNotSelectNewObjects false
+			    -transmitFilters false
+			    -showSetMembers true
+			    -setFilter defaultSetFilter
+			    $outliner;
+			
+			setParent($graphPaneLayout);
+				
+			$gPgYetiGraphEditor = `pgYetiCreateGraphEditor($graphPaneLayout)`;
+			
+				
+		formLayout -edit
+		-attachForm $toolbar "top" 2
+		-attachForm $toolbar "right" 5
+		-attachForm $toolbar "left" 5
+    	-attachNone $toolbar "bottom" 
+
+		-attachControl $graphPaneLayout "top" 5 $toolbar
+		-attachForm $graphPaneLayout "left" 0
+		-attachForm $graphPaneLayout "right" 0		
+		-attachForm $graphPaneLayout "bottom" 0
+
+		$masterLayout;
+		
+				
+	setParent($panelName);
+		
+	scriptJob -e "SelectionChanged" "pgYetiMayaUI -graphEditorSelectionChangedCB;" -permanent -parent $gPgYetiGraphEditor;
+}
+
+global proc pgYetiGraphPanelRemoveCallback(string $panelName) 
+{
+//
+//  Description:
+//        Unparent any editors and save state if required.
+//
+	global int $gPgYetiGraphPanelCheckBoxStates[2];
+	$gPgYetiGraphPanelCheckBoxStates[0] = `menuItem -q -checkBox pgYetiGraphPanelDisplayAsHeatMapMenuItem`;
+	$gPgYetiGraphPanelCheckBoxStates[1] = `menuItem -q -checkBox pgYetiGraphPanelAutoConnectNodesMenuItem`;
+	
+	global string $gPgYetiGraphEditor;
+	$gPgYetiGraphEditor = "";
+		
+	pgYetiMayaUI -deleteGraphEditor;
+}
+
+global proc pgYetiGraphPanelDeleteCallback(string $panelName) 
+{
+//
+//  Description:
+//        Delete any editors and do any other cleanup required.
+	//pgYetiMayaUI -deleteGraphEditor;
+}
+
+global proc string pgYetiGraphPanelSaveStateCallback(string $panelName) 
+{
+//
+//  Description:
+//        Return a string that will restore the current state
+//        when it is executed.
+	pgYetiMayaUI -graphEditorSelectionChangedCB;
+	return "";
+}
+
+global proc pgYetiGraphPanelSamplePanelState( string $whichPanel ) 
+{
+//
+//  Description:
+//        This is a convenience proc to set the panel state from the
+//        global array
+}
+
+global proc pgYetiGraphPanelCreate()
+{
+	global int $gPgYetiGraphInitializationScriptJob[2];
+	scriptedPanelType
+	    -ccb pgYetiGraphPanelCreateCallback
+	    -icb pgYetiGraphPanelInitCallback
+	    -acb pgYetiGraphPanelAddCallback
+	    -rcb pgYetiGraphPanelRemoveCallback
+	    -dcb pgYetiGraphPanelDeleteCallback
+	    -scb pgYetiGraphPanelSaveStateCallback
+	    -unique true
+	    pgYetiGraphPanelType;
+		
+	//    Create the unique Yeti graph panel
+	scriptedPanel -unParent -menuBarVisible true -type pgYetiGraphPanelType -label "Yeti - Graph Editor" pgYetiGraphPanel;
+	
+	$gPgYetiGraphInitializationScriptJob[0] = `scriptJob -e "NewSceneOpened" "pgYetiGraphPanelInitCallback(\"\")"`;
+	$gPgYetiGraphInitializationScriptJob[1] = `scriptJob -e "PostSceneRead" "pgYetiGraphPanelInitCallback(\"\")"`;
+		
+	// Initialize any global variables
+	global int $gPgYetiGraphPanelCheckBoxStates[2];
+	$gPgYetiGraphPanelCheckBoxStates[0] = false;
+	$gPgYetiGraphPanelCheckBoxStates[1] = true;
+}
+
+global proc pgYetiGraphPanelDestroy()
+{
+	global int $gPgYetiGraphInitializationScriptJob[2];
+	scriptJob -kill $gPgYetiGraphInitializationScriptJob[0] -force;
+	scriptJob -kill $gPgYetiGraphInitializationScriptJob[1] -force;
+	
+	catch(`deleteUI pgYetiGraphPanel`);
+}
+
+global proc pgYetiTearOffGraphPanel()
+{
+	panelTearOff scriptedPanel pgYetiGraphPanel;
+}

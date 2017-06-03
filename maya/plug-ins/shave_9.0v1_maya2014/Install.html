@@ -1,0 +1,1078 @@
+<html>
+<body>
+<h1 align="center">Shave And A Haircut Installation</h1>
+<p>
+<h2>Contents</h2>
+<ul>
+<li><a href="#linux">Linux</a></li>
+	<ul>
+	<li><a href="#before-linux">Before Installation</a></li>
+	<li><a href="#install-linux">Installing Shave And A Haircut</a></li>
+	<li><a href="#mr-linux">Installing Mental Ray Standalone Support</a></li>
+	<li><a href="#load-linux">Loading The Plugin</a></li>
+	<li><a href="#uninstall-linux">Uninstalling Shave And A Haircut</a></li>
+	<li><a href="#remote-linux">Remote Installation</a></li>
+	<li><a href="#relocate-linux">Relocating Files</a></li>
+	</ul>
+<li><a href="#osx">OSX</a></li>
+	<ul>
+	<li><a href="#before-osx">Before Installation</a></li>
+	<li><a href="#install-osx">Installing Shave And A Haircut</a></li>
+	<li><a href="#mr-osx">Installing Mental Ray Standalone Support</a></li>
+	<li><a href="#load-osx">Loading The Plugin</a></li>
+	<li><a href="#uninstall-osx">Uninstalling Shave And A Haircut</a></li>
+	<li><a href="#remote-osx">Remote Installation</a></li>
+	<li><a href="#relocate-osx">Relocating The Plugin Files Component</a></li>
+	<li><a href="#presets-osx">Relocating Presets</a></li>
+	</ul>
+<li><a href="#windows">Windows</a></li>
+	<ul>
+	<li><a href="#before-windows">Before Installation</a></li>
+	<li><a href="#install-windows">Installing Shave And A Haircut</a></li>
+	<li><a href="#mr-windows">Installing Mental Ray Standalone Support</a></li>
+	<li><a href="#prman-windows">Installing RenderMan Shaders</a></li>
+	<li><a href="#load-windows">Loading The Plugin</a></li>
+	<li><a href="#uninstall-windows">Uninstalling Shave And A Haircut</a></li>
+	<li><a href="#remote-windows">Remote Installation</a></li>
+	<li><a href="#relocate-windows">Relocating Files</a></li>
+	</ul>
+<li><a href="#mayaVars">Maya Environment Variables</a></li>
+</ul>
+<p>
+
+
+<hr>
+<p>
+<h2 align="center"><a name="linux">Installing Shave And A Haircut On Linux</a></h2>
+
+<p>
+<h3><a name="before-linux">Before Installation</a></h3>
+<p>
+Shave And A Haircut for Linux comes in a RedHat Package Manager (RPM)
+file, with a name ending in <i>.rpm</i>.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shaveHaircut_Maya2008_0-5.0-44.i686.rpm
+	<br>
+    shaveHaircut_Maya2008_0_64-5.0-44.x86_64.rpm
+</div>
+<p>
+The first is the version for 32-bit Maya, the second is the version for
+64-bit Maya.
+<p>
+Make sure that the Maya version given in the filename matches the version
+of Maya for which you are installing Shave And A Haircut (e.g. '2008_0' for
+32-bit Maya 2008, or '2008_0_64' for 64-bit Maya 2008).
+For the remainder of this document we will assume that you are
+installing Shave And A Haircut for 32-bit Maya 2008.  If not, please
+remember to adjust the version numbers in any filenames or commands
+presented here to match your version of Maya.
+<p>
+If any users on the system are currently running Maya, have them exit until
+the installation is complete.
+
+<p>
+<h3><a name="install-linux">Installing Shave And A Haircut</a></h3>
+<p>
+To install Shave And A Haircut, use the <i>rpm</i> command as follows:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    rpm -U shaveHaircut_Maya2008_0-5.0-44.i686.rpm
+</div>
+
+<p>
+<h3><a name="mr-linux">Installing Mental Ray Standalone Support</a></h3>
+<p>
+Maya allows scenes to be exported as <i>.mi</i> files which can then be
+rendered using a standalone Mental Ray renderer.
+<p>
+To have Shave And A Haircut support this workflow, copy the following file
+to the <i>lib</i> subdirectory of your standalone Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/autodesk/maya2008/mentalray/lib/shaveMRShader.so
+</div>
+<p>
+and copy the following file to the <i>include</i> subdirectory of your
+standalone Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/autodesk/maya2008/mentalray/include/shaveMRShader.mi
+</div>
+
+<p>
+<h3><a name="load-linux">Loading The Plugin</a></h3>
+<p>
+To use Shave And A Haircut from within Maya, bring up Maya's <i>Plug-in
+Manager</i>, which can be found on the Maya menubar under <i>Window :
+Settings/Preferences : Plug-in Manager</i>.
+<p>
+The Plug-in Manager will display its plugins in several sections.  Shave
+And A Haircut will have its own section, bearing a name something like
+this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/autodesk/maya/2008/modules/JoeAlter/plug-ins/
+</div>
+<p>
+Beneath that heading you should see an entry for the <i>shaveNode.so</i>
+file with two checkboxes to the right of it, marked <i>loaded</i> and
+<i>auto load</i>.
+<p>
+To load Shave And A Haircut, check the <i>loaded</i> box.  To have Shave
+And A Haircut automatically load whenever you start up Maya, also check the
+<i>auto load</i> box.
+
+<p>
+<h3><a name="uninstall-linux">Uninstalling Shave And A Haircut</a></h3>
+<p>
+To uninstall Shave And A Haircut, make yourself the superuser and use the
+<i>rpm</i> command as follows:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    rpm -e shaveHaircut_Maya2008_0
+</div>
+<p>
+Note that if, during installation, you copied files by hand as described in
+<a href="#mr-linux">Installing Mental Ray Standalone Support</a>, then you
+will have to remove those files by hand.
+<p>
+
+<p>
+<h3><a name="remote-linux">Remote Installation</a></h3>
+<p>
+The <i>rpm</i> tool used to install Shave And A Haircut is a command line
+tool with no user interaction required.  As such it is well suited
+to remote and unattended installation.  Simply copy Shave And A Haircut's
+<i>.rpm</i> file to the remote system, or to a network drive visible to the
+remote system, then use the <i>rsh</i> command to run <i>rpm</i> on the
+remote system.
+
+<p>
+<h3><a name="relocate-linux">Relocating Files</a></h3>
+<p>
+For most users the standard locations used by Shave for its components
+will be sufficient.  However, some users with special needs may need to
+relocate some or all of Shave's components to different locations on their
+computer's disks, or on a network.
+<p>
+This section lists the various categories of files included in the
+Shave And A Haircut installation, their default locations, and how to go
+about relocating them to different directories.
+
+
+<h4>Base Plugin And Scripts (required)</h4>
+<p>
+On Linux Shave And A Haircut is shipped as a Maya module.  This means that
+there is a module definition file which points to a special directory tree
+containing most of the files required by Shave And A Haircut.
+Unfortunately, Maya does not yet support the modularization of runtime
+libraries, presets, Mental Ray for Maya shaders or shader icons, so those
+elements of the plugin must be dealt with separately.
+<p>
+The module definition file for Shave And A Haircut is named
+<i>shaveHaircut.mod</i> and is located in Maya's module directory.
+For example:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya/2008/modules/shaveHaircut.mod
+</div>
+<p>
+By default, the module file will point to the <i>JoeAlter/shaveHaircut</i>
+tree within that same module directory:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut
+</div>
+<p>
+Beneath that directory lie four subdirectories, containing the base
+plug-ins, scripts, icons and Shave API sample files:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut/plug-ins
+  <br>
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut/scripts
+  <br>
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut/icons
+  <br>
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut/samples
+</div>
+<p>
+All except the sample files are required for the proper operation of Shave
+And A Haircut.
+<p>
+The easiest way to relocate these files is to move the entire sub-tree, as
+a unit, and modify the path in the <i>shaveHaircut.mod</i> file to point to
+the new location.
+<p>
+The <i>shaveHaircut.mod</i> file itself may be relocated to any directory
+in the user's <a href="#mayaVars">MAYA_MODULE_PATH</a>.
+<p>
+Alternatively, the files in the <i>plug-ins</i> subdirectory may be moved
+to any directory which is in the user's <a
+href="#mayaVars">MAYA_PLUG_IN_PATH</a>, the files in the <i>scripts</i>
+subdirectory to any directory in the user's <a
+href="#mayaVars">MAYA_SCRIPT_PATH</a>, and the files in the <i>icons</i>
+subdirectory to any directory in the user's <a
+href="#mayaVars">XBMLANGPATH</a>.  The files in the <i>samples</i>
+subdirectory can go wherever you like.
+
+
+<h4>Base Runtime Library (required)</h4>
+<p>
+Shave And A Haircut installs a library named <i>libShave.so</i> to
+which it must have access at runtime.  By default this file is placed in
+Maya's <i>lib</i> directory along with Maya's own runtime libraries.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya2008/lib/libShave.so
+</div>
+<p>
+You may relocate this library to any directory in the user's
+<a href="#mayaVars">LD_LIBRARY_PATH</a>
+<p>
+
+
+<h4>Icons (recommended)</h4>
+<p>
+Some versions of Maya do not allow render node and button icons to be
+stored within the module tree, so Shave And A Haircut installs them
+into Maya's own <i>icons</i> directory. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+	/usr/autodesk/maya2008/icons
+</div>
+<p>
+Icon files whose names begin with either <i>shave</i> or <i>render_shave</i>
+are part of the Shave And A Haircut plugin.
+<p>
+If these files are not present Maya will print warnings and buttons on the
+Shave shelf will be displayed with a blank icon, as will any Shave-specific
+buttons on the Hypershade and Create Render Node windows.  Other than that,
+both Shave And A Haircut and Maya will still function properly.
+<p>
+In Maya 6.5 these files must remain in Maya's own <i>icons</i> directory.
+In Maya 7.0 and later they can be relocated to any directory in the user's
+<a href="#mayaVars">XBMLANGPATH</a>.
+<p>
+
+
+<h4>Presets (recommended)</h4>
+<p>
+Shave And A Haircut includes a number of preset files which can be used to
+quickly create hair with certain predefined looks, such as blond, grass,
+scruffy, etc.  Each preset consists of a MEL script file and an XPM image
+file containing a sample swatch.
+<p>
+These presets are intended to be available to all users on the system and
+are normally stored with the rest of Maya's system-wide presets in a
+directory relative to Maya's installation directory.  So for Maya 2008
+the default location of the script file for Shave's <i>grass</i> preset
+would be:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+	/usr/autodesk/maya2008/presets/attrPresets/shaveHair/grass.mel
+</div>
+<p>
+When searching for these built-in presets Shave And A Haircut looks in the
+following directories, in the order listed, from top to bottom:
+<p>
+<ul>
+<li>${SHAVE_COMMON_PRESET_PATH}</li>
+<li>${SHAVE_LOCATION}/presets/attrPresets/shaveHair</li>
+<li>${MAYA_PRESET_PATH}/attrPresets/shaveHair</li>
+<li>${MAYA_LOCATION}/presets/attrPresets/shaveHair</li>
+</ul>
+<p>
+The syntax <i>${NAME}</i> refers to the expansion of the environment
+variabled named <i>NAME</i>. Note that <i>${MAYA_PRESET_PATH}</i> may
+expand to a list of directories in which case each is checked in turn.
+<p>
+
+
+<h4>Mental Ray Shaders (optional)</h4>
+<p>
+Shave And A Haircut's support for Mental Ray for Maya involves three files:
+a shader definition file called <i>shaveMRShader.mi</i>, a shader library
+file called <i>shaveMRShader.so</i>, and the Mental Ray for Maya startup
+file which is called <i>maya.rayrc</i>.  These files are installed within
+the <i>mentalray</i> hierarchy beneath Maya's own installation directory.
+For Maya 2008, the files would be located as
+follows:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya2008/mentalray/include/shaveMRShader.mi
+  <br>
+  /usr/autodesk/maya2008/mentalray/lib/shaveMRShader.so
+  <br>
+  /usr/autodesk/maya2008/mentalray/maya.rayrc
+</div>
+<p>
+The first two files are installed by Shave And A Haircut.  The third is
+installed by Maya and modified by the Shave And A Haircut installer.  They
+are only required if you wish to use Mental Ray for Maya to render scenes
+containing hair generated by Shave And A Haircut.
+<p>
+The locations of these files are mandated by Maya and, to the best of our
+knowledge, they cannot be relocated elsewhere except by moving all of Maya.
+<p>
+Shave And A Haircut also installs icons for its Mental Ray shaders into
+Maya's own <i>icons</i> directory.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/autodesk/maya2008/icons/render_shaveMRHairComp.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRHairGeom.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRHairGeomDRA.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRHairIllum.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRHairShadows.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRRenderComp.xpm
+	<br>
+    /usr/autodesk/maya2008/icons/render_shaveMRVertexIllum.xpm
+</div>
+<p>
+If these files are not present, the corresponding shaders will be displayed
+with blank icons in the Hypershade and Create Render Node windows.  Also,
+the first time one of those windows is opened, Maya will display warning
+messages for each missing icon.  Other than that, both Shave And A Haircut
+and Maya will function properly whether or not the files are present.
+<p>
+In Maya 6.5 these files must remain in Maya's own <i>icons</i> directory.
+In Maya 7.0 and later they can be relocated to any directory in the user's
+<a href="#mayaVars">XBMLANGPATH</a>.
+<p>
+
+
+<h4>RenderMan Shaders (optional)</h4>
+<p>
+Shave has a single RenderMan shader called <i>Shave.slo</i>
+which is installed into the <i>plug-ins/prman/lib/shaders</i> directory
+in the Shave installation tree. For example:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya/2008/modules/JoeAlter/shaveHaircut/plug-ins/prman/lib/shaders/Shave.slo
+</div>
+<p>
+By default Shave looks for this shader relative to the location of its
+plugin file, <i>shaveNode.so</i>, which normally sits in the
+<i>plug-ins</i> directory of the path given above. So if you move
+<i>shaveNode.so</i> to a different directory then you should move the
+<i>prman</i> directory there as well.
+<p>
+Alternatively, you can move the <i>Shave.slo</i> file itself into the
+<i>lib/shaders</i> subdirectory of any directory in the user's
+<a href="#mayaVars">RMSTREE</a>.
+
+
+<h4>Shave API Plugins (optional)</h4>
+<p>
+Third-party plugins developed using the Shave And A Haircut API will
+require the presence of the <i>libShaveAPI.so</i> runtime library, which by
+default can be found in Maya's own <i>lib</i> directory.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  /usr/autodesk/maya2008/lib/libShaveAPI.so
+</div>
+<p>
+If you are using third-party plugins built with the Shave And A Haircut API
+and need to relocate this file, the directory to which you relocate it must
+be in the user's <a href="#mayaVars">LD_LIBRARY_PATH</a>.
+<p>
+Note that Shave And A Haircut does not itself use this file.
+<p>
+
+
+<h4>Shave API Development (optional)</h4>
+<p>
+Developers wishing to create their own plugins which use the Shave And A
+Haircut API will need access to the <i>libShaveAPI.so</i> runtime library
+described in the previous section, as well as its associated header file,
+<i>shaveAPI.h</i>.  By default this header file is located within Maya's
+own <i>include</i> directory.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/autodesk/maya2008/include/maya/shaveAPI.h
+</div>
+<p>
+Shave And A Haircut does not itself use this header file, so you may
+freely relocate it to any directory.
+
+
+<hr>
+<p>
+<h2 align="center"><a name="osx">Installing Shave And A Haircut On OSX</a></h2>
+
+<p>
+<h3><a name="before-osx">Before Installation</a></h3>
+<p>
+Shave And A Haircut for OSX comes as a zipped OSX installation bundle,
+with a name ending in <i>.pkg.zip</i>.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shaveHaircut_Maya2008_0.pkg.zip
+</div>
+<p>
+Make sure that the Maya version given in the filename (e.g. '2008_0') matches
+the version of Maya for which you are installing Shave And A Haircut (e.g.
+'2008').  For the remainder of this document we will assume that you are
+installing Shave And A Haircut for Maya 2008.  If not, please remember to
+adjust the Maya version numbers in any filenames or commands presented here
+to match your version of Maya.
+<p>
+If any users on the system are currently running Maya, have them exit until
+the installation is complete.
+<p>
+If you are upgrading from an earlier version of Shave And A Haircut, just
+follow the same instructions as if you were installing for the first time.
+
+<p>
+<h3><a name="install-osx">Installing Shave And A Haircut</a></h3>
+<p>
+If you downloaded Shave And A Haircut using your web browser, depending
+upon its configuration it may have automatically expanded the <i>.zip</i>
+file into a <i>.mpkg</i> bundle.  If not, then try double-clicking on the
+<i>.zip</i> file to see if that will expand it.  If that doesn't work
+either, then open up a Terminal window, use the <i>cd</i> command to change
+to whatever directory you downloaded the <i>.zip</i> file to, then use the
+<i>unzip</i> command to expand it.  For example, if you downloaded the
+<i>.zip</i> file to your desktop, then you would do something like this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    cd Desktop
+	<br>
+	unzip shaveHaircut_Maya2008_0.pkg.zip
+</div>
+<p>
+However you get there, you should eventually end up with a bundle ending in
+<i>.mpkg</i>.  Unlike the <i>.zip</i> file, the bundle will also contain the
+version of Shave in its name (e.g. <i>shaveHaircut_Maya2008_0-5.0v44.mpkg</i>).
+Again, depending upon your settings, your browser may automatically launch
+the OSX installer.  If not, then double-click on the bundle to launch the
+installer.
+<p>
+The installer will first display a welcome window. Click on the <b>Continue</b>
+button.
+<p>
+The next window will give you an opportunity to change where Shave will be
+installed. To install to a non-default volume, such as a network drive, click
+the <b>Change Install Location</b> button.
+<p>
+To change where individual components of Shave are installed, click the
+<b>Customize</b> button. You will be presented with a window listing each
+of Shave's three components: Maya Support Files, Plugin Files and API Samples.
+You can choose not to install a given component by toggling off its checkbox,
+however note that Shave requires the first two components for proper operation.
+By clicking on the folder icon beside each component you can change the directory
+where that component will be installed. In choosing an alternate location for
+a component, keep the following in mind:
+<p>
+<ul>
+<li>The <i>mayaFiles</i> component must be installed in the same location as
+Maya.</li>
+<li>The <i>pluginFiles</i> component must be installed in a location where
+Maya will be able to find it. See the section
+on <a href="#relocate-osx">Relocating The Plugin Files Component</a> for more
+details.</li>
+<li>The <i>sampleFiles</i> component is optional and can go anywhere.</li>
+</ul>
+<p>
+Once you're ready to continue with the installation, click on the
+<b>Install</b> button.  The Installer will prompt you for your password, or
+that of System Administrator.  After supplying that, it will proceed to install
+Shave And A Haircut. When it is done, click the <b>Close</b> button.
+
+<p>
+<h3><a name="mr-osx">Installing Mental Ray Standalone Support</a></h3>
+<p>
+Maya allows scenes to be exported as <i>.mi</i> files which can then be
+rendered using a standalone Mental Ray renderer.
+<p>
+To have Shave And A Haircut support this workflow, you must copy the
+following file to the <i>lib</i> subdirectory of your standalone
+Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /Applications/Autodesk/maya2008/Maya.app/Contents/mentalray/lib/shaveMRShader.so
+</div>
+<p>
+Also copy the following file to the <i>include</i> subdirectory of
+your standalone Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /Applications/Autodesk/maya2008/Maya.app/Contents/mentalray/include/shaveMRShader.mi
+</div>
+<p>
+If during installation you chose to install the "Maya Support Files" component
+of Shave And A Haircut to a non-default location then you must adjust the
+pathnames shown above accordingly.
+
+<p>
+<h3><a name="load-osx">Loading The Plugin</a></h3>
+<p>
+To use Shave And A Haircut from within Maya, bring up Maya's <i>Plug-in
+Manager</i>, which can be found on the Maya menubar under <i>Window :
+Settings/Preferences : Plug-in Manager</i>.
+<p>
+The Plug-in Manager will display its plugins in several sections. If
+you installed the "Maya Support Files" component of Shave And A Haircut in its
+default location then its plugin will be in a section bearing a name something
+like this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /Users/Shared/Autodesk/maya/2008/plug-ins
+</div>
+<p>
+If you installed the component elsewhere then the path in the header will differ
+correspondingly.
+<p>
+Beneath that heading you should see an entry for <i>shaveNode.bundle</i>
+with two checkboxes to the right of it, marked <i>Loaded</i> and
+<i>Auto load</i>.
+<p>
+To load Shave And A Haircut, check the <i>Loaded</i> box.  To have Shave
+And A Haircut automatically load whenever you start up Maya, also check the
+<i>Auto load</i> box.
+
+<p>
+<h3><a name="uninstall-osx">Uninstalling Shave And A Haircut</a></h3>
+<p>
+Unfortunately, OSX's Installer does not support uninstalling
+packages, so you must remove the files by hand.
+<p>
+If you look in your system's <b>/Library/Receipts</b> directory you should
+see a bundle for each of Shave's three components. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shave_Maya2008-mayaFiles.pkg
+	<br>
+	shave_Maya2008-pluginFiles.pkg
+	<br>
+	shave_Maya2008-sampleFiles.pkg
+</div>
+<p>
+In the Finder each of these bundles will appear as a single file and, depending
+upon your settings, the <i>.pkg</i> extension may not be visible. From the
+command line each bundle will appear as a directory.
+<p>
+Within each package there is a <b>Contents</b> directory containing a file
+called <b>Archive.bom</b>. This contains a list of all the files which were
+installed. You can display the list using the <i>lsbom</i> command. E.g:
+<p>
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    lsbom /Library/Receipts/shave_Maya2008-mayaFiles.pkg/Contents/Archive.bom
+</div>
+<p>
+All of the files will be listed relative to the directory in which the component
+was installed.
+<p>
+Within the <b>Contents</b> directory there is another file named <b>Info.plist</b>.
+This is an XML text file containing key/value pairs. Find the line which
+contains the <b>IFPkgRelocatedPath</b> key and beneath that will be a line
+giving the path to the directory where the component was installed. E.g:
+<p>
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    &lt;key&gt;IFPkgRelocatedPath&lt;/key&gt;
+	<br>
+    &lt;string&gt;./Applications/Autodesk/maya2008/&lt;/string&gt;
+</div>
+<p>
+With these two pieces of information you should be able to locate and delete
+all of the files.
+<p>
+Note that if, during installation, you copied files by hand as described in
+<a href="#mr-osx">Installing Mental Ray Standalone Support</a>, then you
+will have to remove those files as well.
+<p>
+
+<p>
+<h3><a name="remote-osx">Remote Installation</a></h3>
+<p>
+If you downloaded Shave And A Haircut as a zip file, you will first have to
+unzip it. That will give you a bundle with a name ending in ".mpkg". E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shaveHaircut_Maya2008_0-5.0v44.mpkg
+</div>
+<p>
+In Finder the bundle will appear as a single file but from the command line you
+will see that it is in fact a directory.
+<p>
+The <i>installer</i> command can be used to do command line installations
+of the package without invoking a graphical user interface.  As such it is
+well suited for use in remote and unattended installations.  Note that you
+must have root privileges to use this command.
+<p>
+To install Shave And A Haircut in its default location you would
+use a command something like this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/sbin/installer -pkg shaveHaircut_Maya2008_0-5.0v44.mpkg -target /
+</div>
+<p>
+The <i>-pkg</i> flag specifies the location of the of the package to be
+installed and the <i>-target</i> flag specifies the disk volume where Maya is
+installed, which is usually just the system root ('/').
+<p>
+If you want to install one or more of Shave's components in a non-default
+location then you will have to install each of the components separately. To do this
+you must first move into the <b>Contents/Packages</b> directory inside the
+bundle. In there you will see a separate bundle for each of Shave's
+three components. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shaveHaircut_Maya2008-mayaFiles.pkg
+	<br>
+    shaveHaircut_Maya2008-pluginFiles.pkg
+	<br>
+    shaveHaircut_Maya2008-sampleFiles.pkg
+</div>
+<p>
+The <i>installer</i> command can be used to install each component separately.
+In doing so you must use the <i>-target</i> flag to provide the full path
+for the component. For example, let's say that you have Maya 2008 installed
+in <b>/Volumes/Shared/Maya/2008</b>. You will have to provide that path when
+installing the 'mayaFiles' component:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/sbin/installer -pkg shaveHaircut_Maya2008-mayaFiles.pkg -target /Volumes/Shared/Maya/2008
+</div>
+<p>
+When choosing an alternate location for a component, keep the following in
+mind:
+<p>
+<ul>
+<li>The <i>mayaFiles</i> component must be installed in the same location as
+Maya.</li>
+<li>The <i>pluginFiles</i> component must be installed in a location where
+Maya will be able to find it. See the section
+on <a href="#relocate-osx">Relocating The Plugin Files Component</a> for more
+details.</li>
+<li>The <i>sampleFiles</i> component is optional and can go anywhere.</li>
+</ul>
+<p>
+Even if you wish for a component to be installed in its default
+location, you will still have to provide the appropriate path. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    /usr/sbin/installer&nbsp;-pkg&nbsp;shaveHaircut_Maya2008-pluginFiles.pkg&nbsp;-target&nbsp;/Users/Shared/Autodesk/maya/2008
+	<br>
+    /usr/sbin/installer&nbsp;-pkg&nbsp;shaveHaircut_Maya2008-sampleFiles.pkg&nbsp;-target&nbsp;/Users/Shared/JoeAlter/shaveHaircut/maya2008
+</div>
+<p>
+
+<p>
+<h3><a name="relocate-osx">Relocating The Plugin Files Component</a></h3>
+<p>
+The <i>Plugin Files</i> component contains three subdirectories: <b>icons</b>,
+<b>plug-ins</b> and <b>scripts</b>. For proper operation of Shave the <b>icons</b>
+directory must be in Maya's <a href="#mayaVars">XBMLANGPATH</a>,
+the <b>plug-ins</b> directory must be in Maya's
+<a href="#mayaVars">MAYA_PLUG_IN_PATH</a> and the
+<b>scripts</b> directory must be in Maya's <a href="#mayaVars">MAYA_SCRIPT_PATH</a>.
+<p>
+By default the Plugin Files component is installed into Maya's
+shared directory (e.g. /Users/Autodesk/maya/2008) because its subdirectories
+are already included in the appropriate environment variables.
+If you decide to install the component elsewhere then you must ensure that Maya
+will know about the new locations of those three subdirectories. There are
+two ways of doing this.
+<p>
+The simplest approach is to add each of the subdirectories to its corresponding
+environment variable, for example by placing appropriate assignments into
+each user's <b>Maya.env</b> file.
+<p>
+A more robust approach is to create a module file. This is a text file containing
+a single line of text with the following format:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    + shaveHaircut [shaveVersion] [componentPath]
+</div>
+<p>
+Replace <i>[shaveVersion]</i> with the version of shave your are installeing
+and replace <i>[componentPath]</i> with the full path to where you have installed
+the Plugin Files component. For example, if you are installing the Plugin
+Files component of Shave 5.0v44 into <b>/Library/MayaPlugins</b> then the
+module file would contain this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    + shaveHaircut 5.0 /Library/MayaPlugins
+</div>
+<p>
+Place this file in Maya's <b>modules</b> directory (e.g. /Applications/Autodesk/maya/2008/Maya.app/Contents/modules). Maya will automatically add the subdirectories
+of the path specified in the module file to the correct environment variables.
+
+
+<h3><a name="presets-osx">Relocating Presets</a></h3>
+<p>
+Shave And A Haircut includes a number of preset files which can be used to
+quickly create hair with certain predefined looks, such as blond, grass,
+scruffy, etc.  Each preset consists of a MEL script file and an XPM image file
+containing a sample swatch.
+<p>
+These presets are intended to be available to all users on the system and
+are normally stored with the rest of Maya's system-wide presets in the
+<i>Contents</i> hierarchy of Maya's installation directory.  So for Maya 2008
+the default location of the script file for Shave's <i>grass</i> preset
+would be:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+	/Applications/Autodesk/maya2008/Maya.app/Contents/presets/attrPresets/shaveHair/grass.mel
+</div>
+<p>
+When searching for these built-in presets Shave And A Haircut looks in the
+following directories, in the order listed, from top to bottom:
+<p>
+<ul>
+<li>${SHAVE_COMMON_PRESET_PATH}</li>
+<li>${SHAVE_LOCATION}/presets/attrPresets/shaveHair</li>
+<li>${MAYA_PRESET_PATH}/attrPresets/shaveHair</li>
+<li>${MAYA_LOCATION}/presets/attrPresets/shaveHair</li>
+</ul>
+<p>
+The syntax <i>${NAME}</i> refers to the expansion of the environment
+variabled named <i>NAME</i>. Note that <i>${MAYA_PRESET_PATH}</i> may
+expand to a list of directories in which case each is checked in turn.
+
+
+<hr>
+<p>
+<h2 align="center"><a name="windows">Installing Shave And A Haircut On Windows</a></h2>
+<p>
+
+<h3><a name="before-windows">Before Installation</a></h3>
+<p>
+Shave And A Haircut for Windows comes as an executable installer with a
+filename something like this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shave-5.0v44-Release-Maya2008.exe
+	<br>
+	shave-5.0v44-Release-Maya2008x64.exe
+</div>
+<p>
+The first is the version for 32-bit Maya, the second is the version for
+64-bit Maya.
+<p>
+Make sure that the Maya version given in the filename matches
+the version of Maya for which you are installing Shave And A Haircut (.e.g.
+'2008' for 32-bit Maya 2008 or '2008x64' for 64-bit Maya 2008).
+For the remainder of this document we will assume that you are installing
+Shave And A Haircut for 32-bit Maya 2008.  If not, please remember to adjust
+the version numbers in any filenames or commands presented here to match
+your version of Maya.
+<p>
+If any users on the system are currently running Maya, have them exit until
+the installation is complete.
+
+<p>
+<h3><a name="install-windows">Installing Shave And A Haircut</a></h3>
+<p>
+To install Shave And A Haircut, run the executable by double-clicking on
+its filename.  This will launch the Shave And A Haircut installation wizard
+which will guide you through the remainder of the installation process.
+
+<p>
+<h3><a name="mr-windows">Installing Mental Ray Standalone Support</a></h3>
+<p>
+Maya allows scenes to be exported as <i>.mi</i> files which can then be
+rendered using a standalone Mental Ray renderer. To make use of Shave And
+A Haircut in those standalone renders, copy the following file to the
+<i>lib</i> subdirectory of your standalone Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    C:\Program&nbsp;Files\Autodesk\maya2008\mentalray\lib\shaveMRShader.dll
+</div>
+<p>
+and copy the following file to the <i>include</i> subdirectory of your
+standalone Mental Ray installation:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    C:\Program&nbsp;Files\Autodesk\maya2008\mentalray\include\shaveMRShader.mi
+</div>
+
+<p>
+<h3><a name="prman-windows">Installing RenderMan Shaders</a></h3>
+<p>
+Shave has a single RenderMan shader called <i>Shave.slo</i>
+which is installed into the <i>plug-ins/prman/lib/shaders</i> folder within
+the JoeAlter tree. For example:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008\plug-ins\prman\lib\shaders\Shave.slo
+</div>
+<p>
+The current beta versions of RenderMan Studio and RenderMan for Maya do not
+allow shaders to be located anywhere except in their own
+<i>rmantree\lib\shaders</i> folder.
+For example, if you have RenderMan Studio installed in:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Pixar\RenderMan-Studio-maya8.5
+</div>
+<p>
+Then you will need to copy <i>Shave.slo</i> into this folder:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Pixar\RenderMan-Studio-maya8.5\rmantree\lib\shaders
+</div>
+
+<p>
+<h3><a name="load-windows">Loading The Plugin</a></h3>
+<p>
+To use Shave And A Haircut from within Maya, bring up Maya's <i>Plug-in
+Manager</i>, which can be found on the Maya menubar under <i>Window :
+Settings/Preferences : Plug-in Manager</i>.
+<p>
+The Plug-in Manager will display its plugins in several sections.  Shave
+And A Haircut will have its own section, bearing a name something like
+this:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    C:/Program&nbsp;Files/JoeAlter/shaveHaircut/maya2008/plug-ins
+</div>
+<p>
+Beneath that heading you should see an entry for the <i>shaveNode.mll</i>
+file with two checkboxes to the right of it, marked <i>loaded</i> and
+<i>auto load</i>.
+<p>
+To load Shave And A Haircut, check the <i>loaded</i> box.  To have Shave
+And A Haircut automatically load whenever you start up Maya, also check the
+<i>auto load</i> box.
+
+<p>
+<h3><a name="uninstall-windows">Uninstalling Shave And A Haircut</a></h3>
+<p>
+To uninstall Shave And A Haircut, run the <i>Add/Remove Programs</i>
+utility, usually found on the Windows Control Panel.  Click on the entry
+for <i>Shave And A Haircut For Maya</i> then click on the
+<i>Change/Remove</i> button which appears.  This will launch an uninstaller
+wizard, which will guide you through the remainder of the installation.
+<p>
+Note that if, during installation, you copied files by hand as described in
+<a href="#mr-windows">Installing Mental Ray Standalone Support</a>, then you
+will have to remove those files by hand.
+<p>
+
+<p>
+<h3><a name="remote-windows">Remote Installation</a></h3>
+<p>
+The installer executable provides a "silent" mode of operation which
+performs a default installation without using a graphical interface and
+without requiring any user input.  As such it is well suited for use in
+remote and unattended installations.
+<p>
+To access the silent mode, run the executable from the command line and
+append the <i>/s</i> flag.  You'll also want to use the <i>/r</i> flag to
+tell it not to prompt you about file conflicts but to just go ahead and
+replace any existing files with those from the installer. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shave-5.0v44-Release-Maya2008.exe /s /r
+</div>
+<p>
+Some System Administrators install Maya simply by copying its files from
+another system.  This results in an installation for which there are no
+entries in the Windows Registry.  The installer can handle this so long
+as Maya has been installed in its standard location
+(e.g. C:\Program Files\Autodesk\Maya2008).  However, if there are no registry
+entries and Maya has been installed in a non-standard location, then the
+installation will fail.
+<p>
+If you run into this problem, you will have to explictly give the path
+to the Maya installation directory on the command line, using the
+'/var:MayaLocation=<path>' syntax.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    shave-5.0v44-Release-Maya2008.exe /s /r /var:MayaLocation="D:\Apps\Autodesk\Maya2008"
+</div>
+
+<p>
+<h3><a name="relocate-windows">Relocating Files</a></h3>
+<p>
+For most users the standard locations used by Shave for its components
+will be sufficient.  However, users with special needs may need to relocate
+some or all of Shave's components to different locations on their
+computer's disks, or on a network.
+<p>
+This section lists the various categories of files included in the
+Shave And A Haircut installation, their default locations, and how to go
+about relocating them to different folders.
+
+<h4>Base Plugin And Scripts (required)</h4>
+<p>
+On Windows Shave And A Haircut is shipped as a Maya module.  This means
+that there is a module definition file which points to a special folder
+containing most of the files required by Shave And A Haircut.
+Unfortunately, Maya does not yet support the modularization of runtime
+libraries, presets, Mental Ray for Maya shaders, or shader icons, so those
+elements of the plugin must be dealt with separately.
+<p>
+The module definition file for Shave And A Haircut is named
+<i>shaveHaircut.mod</i> and is located in Maya's module folder for the
+specific version of Maya for which it was installed.  For example:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Autodesk\Maya2008\modules\shaveHaircut.mod
+</div>
+<p>
+By default, the module file will point to the
+<i>JoeAlter\shaveHaircut\maya2008</i> folder, located in your system's
+<i>Program Files</i> folder:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008
+</div>
+<p>
+Within that folder lie four sub-folders, containing plug-ins,
+scripts, icons and Shave API sample files:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008\plug-ins
+  <br>
+  C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008\scripts
+  <br>
+  C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008\samples
+</div>
+<p>
+All except the sample files are required for the proper operation of Shave
+And A Haircut.
+<p>
+The easiest way to relocate these files is to move the entire sub-tree, as
+a unit, and modify the path in the <i>shaveHaircut.mod</i> file to point to
+the new location.
+<p>
+The <i>shaveHaircut.mod</i> file itself may be relocated to any folder in
+the user's <a href="#mayaVars">MAYA_MODULE_PATH</a>.
+<p>
+Alternatively, the files in the <i>plug-ins</i> sub-folder may be moved to
+any folder which is in the user's <a href="#mayaVars">MAYA_PLUG_IN_PATH</a>,
+the files in the <i>scripts</i> sub-folder to any folder in the user's <a
+href="#mayaVars">MAYA_SCRIPT_PATH</a>, and the files in the <i>icons</i>
+sub-folder to any folder in the user's <a href="#mayaVars">XBMLANGPATH</a>.
+The files in the <i>samples</i> sub-folder can go wherever you like.
+
+
+<h4>Base Runtime Library (required)</h4>
+<p>
+Shave And A Haircut installs a library named <i>libShave.dll</i> to
+which it must have access at runtime.  By default this file is placed in
+Maya's <i>bin</i> folder along with Maya's own runtime libraries. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Autodesk\Maya2008\bin\libShave.dll
+</div>
+<p>
+You may relocate this library to any folder in the user's
+<a href="#mayaVars">PATH</a>
+<p>
+
+
+<h4>Icons (recommended)</h4>
+<p>
+Some versions of Maya do not allow icons to be stored within the module
+tree, so Shave And A Haircut installs its icons into Maya's own
+<i>icons</i> folder. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+	C:\Program&nbsp;Files\Autodesk\Maya2008\icons
+</div>
+<p>
+Any files whose names begin with <i>shave</i> or <i>render_shave</i> are
+part of the Shave And A Haircut plugin.
+<p>
+If these files are not present Maya will print warnings and buttons on the
+Shave shelf will be displayed with a blank icon, as will any Shave-specific
+buttons on the Hypershade and Create Render Node windows.  Other than that,
+both Shave And A Haircut and Maya will still function properly.
+<p>
+In Maya 6.5 these files must remain in Maya's own <i>icons</i> directory.
+In Maya 7.0 and later they can be relocated to any directory in the user's
+<a href="#mayaVars">XBMLANGPATH</a>.
+<p>
+
+
+<h4>Presets (required)</h4>
+<p>
+Shave And A Haircut includes a number of preset files which can be used to
+quickly create hair with certain predefined looks, such as blond, grass,
+scruffy, etc.  Each preset consists of a MEL script file and an XPM image file
+containing a sample swatch.
+<p>
+These presets are intended to be available to all users on the system and
+are normally stored with the rest of Maya's system-wide presets in a
+folder relative to Maya's installation directory.  So for Maya 2008 the
+default location of the script file for Shave's <i>grass</i> preset would
+be:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Autodesk\Maya2008\presets\attrPresets\shaveHair\grass.mel
+</div>
+<p>
+When searching for these built-in presets Shave And A Haircut looks in the
+following directories, in the order listed, from top to bottom:
+<p>
+<ul>
+<li>${SHAVE_COMMON_PRESET_PATH}</li>
+<li>${SHAVE_LOCATION}\presets\attrPresets\shaveHair</li>
+<li>${MAYA_PRESET_PATH}\attrPresets\shaveHair</li>
+<li>${MAYA_LOCATION}\presets\attrPresets\shaveHair</li>
+</ul>
+<p>
+The syntax <i>${NAME}</i> refers to the expansion of the environment
+variabled named <i>NAME</i>. Note that <i>${MAYA_PRESET_PATH}</i> may
+expand to a list of directories in which case each is checked in turn.
+
+
+<h4>Mental Ray Shaders (optional)</h4>
+<p>
+Shave And A Haircut's support for Mental Ray for Maya involves three files:
+a shader definition file called <i>shaveMRShader.mi</i>, a shader library
+file called <i>shaveMRShader.dll</i>, and the Mental Ray for Maya startup
+file which is called <i>maya.rayrc</i>.  These files are installed within
+the <i>mentalray</i> hierarchy beneath Maya's own installation folder.  For
+Maya 2008, the files would be located as follows:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Autodesk\Maya2008\mentalray\include\shaveMRShader.mi
+  <br>
+  C:\Program&nbsp;Files\Autodesk\Maya2008\mentalray\lib\shaveMRShader.dll
+  <br>
+  C:\Program&nbsp;Files\Autodesk\Maya2008\mentalray\maya.rayrc
+</div>
+<p>
+The first two files are installed by Shave And A Haircut.  The third is
+installed by Maya and modified by the Shave And A Haircut installer.  They
+are only required if you wish to use Mental Ray for Maya to render scenes
+containing hair generated by Shave And A Haircut.
+<p>
+The locations of these files are mandated by Maya and, to the best of our
+knowledge, cannot be relocated elsewhere except by moving all of Maya.
+
+
+<h4>RenderMan Shaders (optional)</h4>
+<p>
+Shave has a single RenderMan shader called <i>Shave.slo</i>
+which is installed into the <i>plug-ins/prman/lib/shaders</i> folder within
+the JoeAlter tree. For example:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\JoeAlter\shaveHaircut\maya2008\plug-ins\prman\lib\shaders\Shave.slo
+</div>
+<p>
+The current beta versions of RenderMan Studio and RenderMan for Maya do not
+allow shaders to be located anywhere except in their own
+<i>rmantree\lib\shaders</i> folder.
+For example, if you have RenderMan Studio installed in:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Pixar\RenderMan-Studio-maya8.5
+</div>
+<p>
+Then you will need to copy <i>Shave.slo</i> into this folder:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+  C:\Program&nbsp;Files\Pixar\RenderMan-Studio-maya8.5\rmantree\lib\shaders
+</div>
+
+
+<h4>Shave API Plugins (optional)</h4>
+<p>
+Third-party plugins developed using the Shave And A Haircut API will
+require the presence of the <i>libShaveAPI.dll</i> runtime library, which
+by default can be found in Maya's own <i>bin</i> folder. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+	C:\Program&nbsp;Files\Autodesk\Maya2008\bin\libShaveAPI.dll
+</div>
+<p>
+If you are using third-party plugins built with the Shave And A Haircut API
+and need to relocate this file, the folder to which you relocate it must
+be in the user's <a href="#mayaVars">PATH</a>.
+<p>
+Note that Shave And A Haircut does not itself use this file.
+<p>
+
+<h4>Shave API Development (optional)</h4>
+<p>
+Developers wishing to create their own plugins which use the Shave And A
+Haircut API will need access to the <i>libShaveAPI.dll</i> runtime library
+described in the previous section, as well as its associated header file,
+<i>shaveAPI.h</i>.  By default this file is located within Maya's own
+<i>include</i> folder.  E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+    C:\Program&nbsp;Files\Autodesk\Maya2008\include\maya\shaveAPI.h
+</div>
+<p>
+Shave And A Haircut does not itself use this header file, so you may
+freely relocate it to any folder.
+
+<hr>
+<p>
+<h2 align="center"><a name="mayaVars">Maya Environment Variables</a></h2>
+<p>
+If you don't know which directories are pointed to by a given Maya
+environment variable, such as <i>MAYA_PLUG_IN_PATH</i>, then start up Maya
+and in the Script Editor window and use the <i>getenv</i> command on the
+variable name. E.g:
+<div style="margin-left:2em;font-family:monospace;font-size:large">
+getenv MAYA_PLUG_IN_PATH
+</div>
+<p>
+Maya will display a single line containing all of the directories that Maya
+will search for, in this case, plug-ins.
+
+</body>
+</html>

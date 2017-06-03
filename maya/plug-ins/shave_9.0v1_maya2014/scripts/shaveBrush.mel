@@ -1,0 +1,469 @@
+global string $shaveBrush_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2005
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com)
+//
+
+//
+// Initialize brush handling.
+//
+global proc shaveBrush()
+{
+	source shaveCursorCtxCommonProperties;
+	source shaveCursorCtxCommonValues;
+
+	//
+	// Create any properties which don't yet exist.
+	//
+	if (!`optionVar -exists shaveBrushSelectMode`)
+		optionVar -stringValue shaveBrushSelectMode "guide";
+
+	if (!`optionVar -exists shaveBrushMode`)
+		optionVar -intValue shaveBrushMode 0;
+
+	//
+	// Have the 'Other' component popup menu display hair components as
+	// well.
+	//
+	popupMenu -e -pmc shaveBrush_createComponentMenu compOtherPopup;
+
+	//
+	// Whenever the selection mode changes, convert selections.
+	//
+	global int	$gShave_selectModeChangedJob;
+
+	$gShave_selectModeChangedJob = `scriptJob -e SelectModeChanged
+		"shaveUtil -convertComponentSelections"`;
+}
+
+
+global proc shaveBrush_cleanup()
+{
+	if (`popupMenu -exists compOtherPopup`)
+		popupMenu -e -pmc "createMaskPopup \"compOther\"" compOtherPopup;
+
+	//
+	// If anyone tries to use one of our contexts after the plugin has
+	// unloaded, Maya will crash.  So let's make sure that none of our
+	// contexts is current.
+	//
+	string	$ctx = `currentCtx`;
+	string	$class = `contextInfo -class $ctx`;
+
+	if (substring($class, 1, 5) == "shave")
+	{
+		ctxAbort $ctx;
+		setToolTo selectSuperContext;
+	}
+
+	//
+	// Remove our context from the non-sacred tool button at the bottom
+	// of Maya's toolbar (if it is there).
+	//
+	global string $gNonSacredToolWidget;
+	global string $gNonSacredTool;
+
+	if (`toolButton -exists $gNonSacredToolWidget`)
+	{
+		$ctx = `toolButton -q -t $gNonSacredToolWidget`;
+		$class = `contextInfo -class $ctx`;
+
+		if (substring($class, 1, 5) == "shave")
+		{
+			toolButton -e -t "selectSuperContext" -enable false
+				-i1 "vacantCell.xpm" $gNonSacredToolWidget;
+
+			$gNonSacredTool = "";
+		}
+	}
+
+	//
+	// Delete all of our contexts.
+	//
+	string	$contexts[] = `lsUI -contexts`;
+	string	$context;
+
+	for ($context in $contexts)
+	{
+		$class = `contextInfo -class $context`;
+
+		if (substring($class, 1, 5) == "shave")
+			deleteUI -toolContext $context;
+	}
+
+	//
+	// Kill off the scriptJob we started up earlier.
+	//
+	global int	$gShave_selectModeChangedJob;
+
+	shave_killJob($gShave_selectModeChangedJob);
+	$gShave_selectModeChangedJob = -1;
+}
+
+
+global proc shaveBrush_convertComponentSelections(int $forceToComponentMode)
+{
+	//
+	// If we're not in component mode, and we're not forcing component
+	// mode, then there's nothing to do.
+	//
+	int	$isComponentMode = `selectMode -q -co`;
+
+	if (!$forceToComponentMode && !$isComponentMode) return;
+
+	//
+	// Convert any existing selections to the current selection type.  For
+	// example, if a guide has a vert selected and we're in guide selection
+	// mode, then select the guide.
+	//
+	int		$foundComponents = false;
+	string	$hairNode = "";
+	string	$item;
+	string	$mode = `optionVar -q shaveBrushSelectMode`;
+	string	$newSel = "";
+	int		$nodeIsHilited = false;
+	string	$sel[] = `ls -sl`;
+	int		$selectionChanged = false;
+	string	$tmp[];
+
+	//
+	// If we're in component mode, give priority to the first hair node on
+	// the hilite list.
+	//
+	if ($isComponentMode)
+	{
+		$sel = `ls -hilite -dag -type shaveHair`;
+
+		if (size($sel) > 0) $hairNode = $sel[0];
+	}
+
+	$sel = `ls -sl`;
+
+	for ($item in $sel)
+	{
+		//
+		// We only care about the first hair node on the selection list
+		// (plus any components which might appear for that same node later
+		// in the list).
+		//
+		$tmp = `ls -o $item`;
+		$tmp = `ls -dag -s $tmp[0]`;
+
+		if (nodeType($tmp[0]) == "shaveHair")
+		{
+			if ($hairNode == "") $hairNode = $tmp[0];
+
+			if ($tmp[0] == $hairNode)
+			{
+				//
+				// Get the name of the component, if there is one.
+				//
+				tokenize $item "." $tmp;
+
+				if (size($tmp) == 2)
+				{
+					tokenize $tmp[1] "[]" $tmp;
+
+					if (($tmp[0] == "e")
+					||	($tmp[0] == "gd")
+					||	($tmp[0] == "guide"))
+					{
+						string	$guideRange = $tmp[1];
+
+						switch ($mode)
+						{
+							case "guide":
+							case "root":
+								$newSel += " " + $item;
+							break;
+
+							case "tip":
+								$newSel += " " + $hairNode
+										+ ".cv["+$guideRange+"][14]";
+								$selectionChanged = true;
+							break;
+
+							case "vert":
+								$newSel += " " + $hairNode
+										+ ".cv["+$guideRange+"][0:14]";
+								$selectionChanged = true;
+							break;
+						}
+
+						$foundComponents = true;
+					}
+					else if (($tmp[0] == "cv")
+					||	($tmp[0] == "vtx")
+					||	($tmp[0] == "vertex"))
+					{
+						string	$guideRange = $tmp[1];
+						string	$vtxRange = $tmp[2];
+
+						switch ($mode)
+						{
+							case "guide":
+							case "root":
+								$newSel += " " + $hairNode
+										+ ".e[" + $guideRange + "]";
+								$selectionChanged = true;
+							break;
+
+							case "tip":
+								$newSel += " " + $hairNode
+										+ ".cv["+$guideRange+"][14]";
+
+								if ($vtxRange != "14")
+									$selectionChanged = true;
+							break;
+
+							case "vert":
+								$newSel += " " + $item;
+							break;
+						}
+
+						$foundComponents = true;
+					}
+					else
+						$selectionChanged = true;
+				}
+				else
+					$selectionChanged = true;
+			}
+			else
+				$selectionChanged = true;
+		}
+	}
+
+	//
+	// If we didn't find a hair node (or components thereof) on the
+	// selection list, then check the hilite list.
+	// 
+	// If we did find a hair node, then see if it is already hilited.
+	//
+	$sel = `ls -hilite -dag -type shaveHair`;
+
+	if ($hairNode == "")
+	{
+		if (size($sel) > 0) $hairNode = $sel[0];
+	}
+	else
+	{
+		for ($item in $sel)
+		{
+			if ($item == $hairNode)
+			{
+				$nodeIsHilited = true;
+				break;
+			}
+		}
+	}
+
+	//
+	// If no hair node was selected then do nothing.
+	//
+	if ($hairNode == "") return;
+
+	//
+	// If we didn't end up with any hair components then select all of
+	// the hair node's components for the current component type.
+	//
+	if (!$foundComponents)
+	{
+		int	$numGuides = getAttr($hairNode + ".totalGuides");
+
+		if ($numGuides > 0)
+		{
+			switch ($mode)
+			{
+				case "guide":
+				case "root":
+					$newSel = $hairNode + ".e[0:" + ($numGuides-1) + "]";
+				break;
+
+				case "tip":
+					$newSel = $hairNode + ".cv[0:" + ($numGuides-1) + "][14]";
+				break;
+
+				case "vert":
+					$newSel = $hairNode + ".cv[0:" + ($numGuides-1) + "][0:14]";
+				break;
+			}
+
+			$foundComponents = true;
+			$selectionChanged = true;
+		}
+	}
+
+	//
+	// At this point we have a hairNode and will definitely end up with
+	// some components selected, so it is now safe to force component mode,
+	// if we're not already there.
+	//
+	if (!$isComponentMode) selectMode -co;
+
+	//
+	// If the node is not already hilited, then do so now.
+	//
+	if (!$nodeIsHilited) hilite $hairNode;
+
+	//
+	// And finally, if we've changed the selections, then apply them now.
+	//
+	if ($selectionChanged && ($newSel != ""))
+		eval("select -r " + $newSel);
+}
+
+
+global proc shaveBrush_createComponentMenu()
+{
+	string	$selMode = `optionVar -q shaveBrushSelectMode`;
+
+	createMaskPopup "compOther";
+	setParent -m compOtherPopup;
+	menuItem -l "Shave Guides" -cb ($selMode == "guide")
+		-c "shaveSelectGuides" shaveGuideCompItem;
+	menuItem -l "Shave Roots" -cb ($selMode == "root")
+		-c "shaveSelectByRoots" shaveRootCompItem;
+	menuItem -l "Shave Tips" -cb ($selMode == "tip")
+		-c "shaveSelectTips" shaveTipCompItem;
+	menuItem -l "Shave Verts" -cb ($selMode == "vert")
+		-c "shaveSelectVerts" shaveVertCompItem;
+}
+
+global proc shaveBrush_resize(int $enable)
+{
+	string	$ctx = `currentCtx`;
+	
+	if (`contextInfo -class $ctx` == "shaveBrush")
+		shaveBrushCtx -e -interactiveResize $enable $ctx;
+	else if (`contextInfo -class $ctx` == "shaveCut")
+		shaveCutCtx -e -interactiveResize $enable $ctx;
+}
+
+
+global proc shaveBrush_setHotkeys(int $enable)
+{
+	global string	$gShaveBrushResizeOldKeyPressCmd;
+	global string	$gShaveBrushResizeOldKeyReleaseCmd;
+
+	if ($enable)
+	{
+		//
+		// Save the old hotkey commands, if any.
+		//
+		$gShaveBrushResizeOldKeyPressCmd = `hotkey -q -n -k b`;
+		$gShaveBrushResizeOldKeyReleaseCmd = `hotkey -q -rn -k b`;
+
+		//
+		// Create named commands for resizing the brush and assign them to
+		// the key.
+		//
+		nameCommand -ann "Shave brush resize begin"
+			-c "shaveBrush_resize on" shaveBrushResizeBegin;
+		nameCommand -ann "Shave brush resize end"
+			-c "shaveBrush_resize off" shaveBrushResizeEnd;
+
+		hotkey -k b -n shaveBrushResizeBegin -rn shaveBrushResizeEnd;
+	}
+	else
+	{
+		//
+		// Delete the named commands and restore the original ones, if
+		// they're still around.
+		//
+		int		$i;
+		int		$numHotKeys = `assignCommand -q -numElements`;
+
+		for ($i = $numHotKeys; $i > 0; $i--)
+		{
+			string	$namedCommand = `assignCommand -q -n -i $i`;
+
+			if (($namedCommand == "shaveBrushResizeBegin")
+			||	($namedCommand == "shaveBrushResizeEnd"))
+			{
+				assignCommand -e -delete $i;
+			}
+			else
+			{
+				string	$keyInfo[] = `assignCommand -q -keyString -i $i`;
+
+				if ((size($keyInfo) > 0)
+				&&	!(int)$keyInfo[1]
+				&&	!(int)$keyInfo[2]
+				&&	!(int)$keyInfo[3]
+				&&	!(int)$keyInfo[4]
+				&&	!(int)$keyInfo[5])
+				{
+					if (($gShaveBrushResizeOldKeyPressCmd != "")
+					&&	($namedCommand == $gShaveBrushResizeOldKeyPressCmd))
+					{
+						assignCommand -e -keyString "b" -i $i;
+						$gShaveBrushResizeOldKeyPressCmd = "";
+					}
+					else if (($gShaveBrushResizeOldKeyReleaseCmd != "")
+					&&	($namedCommand == $gShaveBrushResizeOldKeyReleaseCmd))
+					{
+						assignCommand -e -keyString "b" -keyUp true -i $i;
+						$gShaveBrushResizeOldKeyReleaseCmd = "";
+					}
+				}
+			}
+		}
+	}
+}
+
+
+global proc shaveBrush_setSelectMode(string $mode)
+{
+	optionVar -sv shaveBrushSelectMode $mode;
+
+	if (`menuItem -q -exists shaveGuideCompItem`)
+	{
+		menuItem -e -cb ($mode == "guide") shaveGuideCompItem;
+		menuItem -e -cb ($mode == "root") shaveRootCompItem;
+		menuItem -e -cb ($mode == "tip") shaveTipCompItem;
+		menuItem -e -cb ($mode == "vert") shaveVertCompItem;
+	}
+
+	shaveShelf_updateSelectModeButtons($mode);
+
+	//
+	// Alas, Maya does not yet let us create own component types, so we
+	// must piggyback on top of those which already exist.  That means that
+	// we must make sure that if the user sets one of our selection types,
+	// we select the corresponding Maya component type.
+	//
+	if ($mode == "guide")
+	{
+		selectType -polymeshEdge on;
+		selectType -cv off;
+	}
+	else
+	{
+		selectType -cv on;
+		selectType -polymeshEdge off;
+	}
+
+	//
+	// If we're not currently in component selection mode, switch to it.
+	// Note that that will automatically force component selections to be
+	// updated.
+	//
+	if (!`selectMode -q -co`)
+		selectMode -co;
+	else
+	{
+		//
+		// Update component selection to match the new select mode.
+		//
+		shaveUtil -convertComponentSelections;
+	}
+
+	refresh -f;
+}
+

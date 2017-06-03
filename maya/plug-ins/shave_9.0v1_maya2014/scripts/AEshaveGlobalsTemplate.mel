@@ -1,0 +1,990 @@
+global string $AEshaveGlobalsTemplate_fileVersion = "$Revision$";
+
+global int	$shave_watchDoCompositingJobID = -1;
+global int	$shave_watchDo2dCompositingJobID = -1;
+global int	$shave_watchDoShadowsJobID = -1;
+global int	$shave_watchUseGeomJobID = -1;
+
+
+global proc AEshaveGlobals_compositingAttrsChanged(string $node)
+{
+	int	$compositingOn = getAttr($node + ".doCompositing");
+	int	$do2d = getAttr($node + ".composite2d");
+	int	$oldSelection = `optionMenuGrp -q -sl AEshaveGlobals_compositingFld`;
+	int	$newSelection;
+
+	if (!$compositingOn)
+		$newSelection = 1;
+	else if ($do2d)
+		$newSelection = 2;
+	else
+		$newSelection = 3;
+
+	if ($newSelection != $oldSelection)
+		optionMenuGrp -e -sl $newSelection AEshaveGlobals_compositingFld;
+}
+
+
+global proc AEshaveGlobals_compositingChanged(string $node)
+{
+	int	$option = `optionMenuGrp -q -sl AEshaveGlobals_compositingFld`;
+	int	$oldCompositing = getAttr($node + ".doCompositing");
+	int	$old2d = getAttr($node + ".composite2d");
+	int	$newCompositing = $oldCompositing;
+	int	$new2d = $old2d;
+
+	switch ($option)
+	{
+		case 1:
+			$newCompositing = false;
+		break;
+
+		case 2:
+			$newCompositing = true;
+			$new2d = true;
+		break;
+
+		case 3:
+			$newCompositing = true;
+			$new2d = false;
+		break;
+	}
+
+	if ($newCompositing != $oldCompositing)
+	{
+		setAttr ($node + ".doCompositing") $newCompositing;
+
+		//
+		// If doCompositing has been turned on, turn shadowMatte off.
+		//
+		if ($newCompositing && getAttr($node + ".shadowMatte"))
+		{
+			setAttr ($node + ".shadowMatte") false;
+		}
+	}
+
+	if ($new2d != $old2d) setAttr ($node + ".composite2d") $new2d;
+
+	AEshaveGlobalsDimControls($node);
+}
+
+
+global proc AEshaveGlobals_compositingNew(string $compositingAttr, string $do2dAttr)
+{
+	global int	$shave_watchDoCompositingJobID;
+	global int	$shave_watchDo2dCompositingJobID;
+
+	string	$tmp[];
+
+	tokenize($compositingAttr, ".", $tmp);
+
+	string	$node = $tmp[0];
+
+	//
+	// Rather than a confusing pair of checkboxes, let's give the user a
+	// pull-down menu with sensible names for the valid settings.
+	//
+	optionMenuGrp -l "Compositing"
+			-cc ("AEshaveGlobals_compositingChanged \"" + $node + "\"")
+			"AEshaveGlobals_compositingFld";
+
+	menuItem -l "Off";
+	menuItem -l "2D Post";
+	menuItem -l "3D Volumetric" AEshaveGlobals_comp3dMenuItem;
+	setParent ..;
+
+	$shave_watchDoCompositingJobID = -1;
+	$shave_watchDo2dCompositingJobID = -1;
+
+	AEshaveGlobals_compositingReplace($compositingAttr, $do2dAttr);
+}
+
+
+global proc AEshaveGlobals_compositingReplace(
+		string $compositingAttr, string $do2dAttr
+)
+{
+	global int	$shave_watchDoCompositingJobID;
+	global int	$shave_watchDo2dCompositingJobID;
+
+	string	$tmp[];
+
+	tokenize($compositingAttr, ".", $tmp);
+
+	string	$node = $tmp[0];
+
+	shave_killJob($shave_watchDoCompositingJobID);
+	shave_killJob($shave_watchDo2dCompositingJobID);
+
+	$shave_watchDoCompositingJobID = `scriptJob -ac $compositingAttr
+			("AEshaveGlobals_compositingAttrsChanged \"" + $node + "\"")`;
+
+	$shave_watchDo2dCompositingJobID = `scriptJob -ac $do2dAttr
+			("AEshaveGlobals_compositingAttrsChanged \"" + $node + "\"")`;
+
+	AEshaveGlobals_compositingAttrsChanged($node);
+}
+
+
+global proc AEshaveGlobals_fastBrushNew()
+{
+	global string $gShaveGlobals_fastBrushCB;
+
+	$gShaveGlobals_fastBrushCB = `checkBoxGrp -ncb 1 -l1 "Fast Brush"`;
+	checkBoxGrp -e -cc1 "AEshaveGlobals_fastBrushChanged"
+		$gShaveGlobals_fastBrushCB;
+
+	AEshaveGlobals_fastBrushReplace();
+}
+
+
+global proc AEshaveGlobals_fastBrushReplace()
+{
+	global string $gShaveGlobals_fastBrushCB;
+
+	int	$fastBrush = `optionVar -q shave_fastBrush`;
+	checkBoxGrp -e -v1 $fastBrush $gShaveGlobals_fastBrushCB;
+	if(`about -macOS` && `about -is64`)
+	{
+		checkBoxGrp -e -enable false $gShaveGlobals_fastBrushCB;
+		checkBoxGrp -e -v1 false $gShaveGlobals_fastBrushCB;
+		optionVar -iv shave_fastBrush false;
+	}
+	else
+		checkBoxGrp -e -enable true $gShaveGlobals_fastBrushCB;
+}
+
+
+global proc AEshaveGlobals_fastBrushChanged()
+{
+	global string $gShaveGlobals_fastBrushCB;
+
+	int $fastBrush = `checkBoxGrp -q -v1 $gShaveGlobals_fastBrushCB`;
+
+	optionVar -iv shave_fastBrush $fastBrush;
+
+	string	$ctx = currentCtx();
+
+	if (($ctx != "") && (`contextInfo -c $ctx` == "shaveBrush"))
+	{
+		//	The tool won't pick up the brush change until it has restarted,
+		//	so let's force a restart.
+		ctxAbort();
+		setToolTo $ctx;
+	}
+}
+
+
+global proc AEshaveGlobals_mrOcclusionCollectionNew(string $attr)
+{
+	radioButtonGrp -l "Occlusion Collection" -nrb 2
+		-l1 "In Maya" -data1 off
+		-l2 "In Mental Ray" -data2 on
+		AEshaveGlobals_mrOcclusionButtons;
+
+	AEshaveGlobals_mrOcclusionCollectionReplace($attr);
+}
+
+
+global proc AEshaveGlobals_mrOcclusionCollectionReplace(string $attr)
+{
+	connectControl AEshaveGlobals_mrOcclusionButtons $attr;
+}
+
+
+global proc AEshaveGlobals_renderModeNew(string $attr)
+{
+	textFieldGrp -l "Renderer" -ed false AEshaveGlobals_rendererFld;
+
+	optionMenuGrp -l "Hair Render Mode" AEshaveGlobals_renderModeMenu;
+	menuItem -l "Buffer" -data 0;
+	menuItem -l "Geometry" -data 1;
+	menuItem -l "Hair Primitives" -data 2 AEshaveGlobals_HairPrimitivesItem;
+	menuItem -l "None" -data 3;
+
+	AEshaveGlobals_renderModeReplace($attr);
+}
+
+
+global proc AEshaveGlobals_renderModeReplace(string $attr)
+{
+	string	$renderer = shave_selectedRenderer();
+	string	$tmp[];
+
+	textFieldGrp -e -tx $renderer AEshaveGlobals_rendererFld;
+
+	tokenize($attr, ".", $tmp);
+
+	string	$node = $tmp[0];
+
+	connectControl -in 2 AEshaveGlobals_renderModeMenu $attr;
+
+	if ($renderer != "mentalRay")
+		menuItem -e -enable false AEshaveGlobals_HairPrimitivesItem;
+}
+
+
+global proc AEshaveGlobals_rendermanReset()
+{
+	string	$numericAttrs[] = {
+							"ribBinary",
+							"ribBlurEnable",
+							"ribBlurInheritSettings",
+							"ribBlurRestoreFrame",
+							"ribBlurShutterCloseOffset",
+							"ribBlurShutterOpenOffset",
+							"ribCompress",
+							"ribNormals",
+							"ribOpacities",
+							"hairPrimitiveType",
+							"ribRootTipColors",
+							"ribBlurTimeBasis",
+							"ribTimeUnits",
+							"ribUVs",
+							"ribVertexColors",
+							"ribVoxelEnable",
+							"ribVoxelFullPaths",
+							"ribVoxelResolution",
+							"ribWCoords"
+						};
+	string	$stringAttrs[] = {
+							"ribStuff",
+							"ribUVSet"
+						};
+	string	$attr;
+
+	for ($attr in $numericAttrs)
+	{
+		float	$default[] = `attributeQuery -typ shaveGlobals -ld $attr`;
+		setAttr ("shaveGlobals." + $attr) $default[0];
+	}
+
+	//	We cannot query the default value of a string attribute, but
+	//	currently they all default to empty.
+	for ($attr in $stringAttrs)
+		setAttr -type "string" ("shaveGlobals." + $attr) "";
+}
+
+
+global proc AEshaveGlobals_rendermanResetNew()
+{
+	rowLayout -nc 1 -cat 1 "left" 100;
+		button -l "Reset To Defaults" -c "AEshaveGlobals_rendermanReset"
+			-w 200
+			AEshaveGlobals_rendermanResetButton;
+	setParent ..;
+}
+
+global proc AEshaveGlobals_rendermanResetReplace()
+{
+	//	The Reset button doesn't do anything node-specific, so there's
+	//	nothing to do in this func, which is only called when the node
+	//	changes.
+}
+
+
+global proc AEshaveGlobalsDimControls(string $nodeName)
+{
+	int		$haveNormalHair = false;
+	int		$haveInstancedHair = false;
+	string	$renderer = shave_selectedRenderer();
+	string	$shaveHairs[] = `ls -type shaveHair`;
+	string	$shaveHair;
+
+	for ($shaveHair in $shaveHairs)
+	{
+		if (getAttr($shaveHair + ".instancingStatus"))
+			$haveInstancedHair = true;
+		else
+			$haveNormalHair = true;
+	}
+
+	//
+	// The 'Render Mode' pulldown only applies to normal hair, so if there
+	// is no normal hair then disable it.
+	//
+	if (`optionMenuGrp -exists "AEshaveGlobals_renderModeMenu"`)
+		optionMenuGrp -e -enable $haveNormalHair AEshaveGlobals_renderModeMenu;
+
+	editorTemplate -dimControl $nodeName "enableInstanceGeometry"
+			(!$haveInstancedHair);
+
+	if (getAttr($nodeName + ".keepHairPassPics"))
+		editorTemplate -dimControl $nodeName "hairFilenamePrefix" false;
+	else
+		editorTemplate -dimControl $nodeName "hairFilenamePrefix" true;
+
+	if (`optionMenuGrp -exists "AEshaveGlobals_compositingFld"`)
+		optionMenuGrp -e -enable $haveNormalHair AEshaveGlobals_compositingFld;
+
+	//
+	// Shadows
+	//
+	int	$shadowsOff = true;
+	int	$geomShadowsOff = true;
+
+	if (getAttr($nodeName + ".doHairShadows") == 1)
+	{
+		$shadowsOff = false;
+
+		if (getAttr($nodeName + ".useGeomForShadows") == 1)
+			$geomShadowsOff = false;
+	}
+
+	editorTemplate -dimControl $nodeName "shadowDensity" $shadowsOff;
+	editorTemplate -dimControl $nodeName "useAllLights" $shadowsOff;
+
+	//
+	// 3D compositing doesn't work with native illumination.  If shadows
+	// are off then keep the 3D and turn off the native illum.  If shadows
+	// are on then keep the native illum and switch to 2D.
+	//
+	int	$nativeIllum = getAttr($nodeName + ".nativeIllumination");
+	int	$compositing = getAttr($nodeName + ".doCompositing");
+	int	$comp2d = getAttr($nodeName + ".composite2d");
+	int $comp3d = ($compositing && !$comp2d);
+
+	if ($comp3d && $nativeIllum)
+	{
+		if ($shadowsOff)
+		{
+			setAttr ($nodeName + ".nativeIllumination") false;
+			$nativeIllum = false;
+		}
+		else
+		{
+			setAttr ($nodeName + ".composite2d") true;
+			$comp3d = false;
+		}
+	}
+
+	//
+	// If native illumination is on then dim the 3D compositing menu
+	// item.
+	//
+	if (`menuItem -exists "AEshaveGlobals_comp3dMenuItem"`)
+		menuItem -e -enable (!$nativeIllum) AEshaveGlobals_comp3dMenuItem;
+
+	//
+	// If 3D compositing is on then dim the nativeIllumination control,
+	// otherwise dim it according to whether shadows are enabled.
+	//
+	editorTemplate -dimControl $nodeName "nativeIllumination"
+		($comp3d || $shadowsOff);
+
+	//
+	// If threadPerProcessor is on then maxThreads is ignored, so dim it.
+	//
+	int	$threadPerProc = getAttr($nodeName + ".threadPerProcessor");
+	editorTemplate -dimControl $nodeName "maxThreads" $threadPerProc;
+
+	//	If ribUVs is on off then disable the UV set field.
+	int	$disable = !getAttr($nodeName + ".ribUVs");
+	editorTemplate -dimControl $nodeName "ribUVSet" $disable;
+
+	//	If we're inheriting settings from Maya or Renderman then get the
+	//	blur enable from there. Otherwise take it from our own control.
+	//
+	//	Now we should really disable all of the blur controls if blur is
+	//	disabled, but that would involve callbacks on both 
+	//	defaultRenderGlobals and renderManGlobals. Since renderManGlobals
+	//	won't necessarily exist yet, that in turn means a callback on node
+	//	creation. That's all way too much work so we just leave the
+	//	fields enabled all the time.
+	//
+	//	However, there are a couple of fields which should only be enabled
+	//	if we're not inheriting settings, so we can still do those.
+	int $inherit = getAttr($nodeName + ".ribBlurInheritSettings");
+
+	$disable = ($inherit != 0);
+	editorTemplate -dimControl $nodeName "ribBlurEnable" $disable;
+	editorTemplate -dimControl $nodeName "ribBlurShutterOpenOffset" $disable;
+	editorTemplate -dimControl $nodeName "ribBlurShutterCloseOffset" $disable;
+
+	//	If ribVoxelEnable is off then disable the other rib voxel fields.
+	$disable = !getAttr($nodeName + ".ribVoxelEnable");
+	editorTemplate -dimControl $nodeName "ribVoxelFullPaths" $disable;
+	editorTemplate -dimControl $nodeName "ribVoxelResolution" $disable;
+
+	//
+	// If irradiance is disabled then dim the slider.
+	//
+	int $irradEnabled = getAttr($nodeName + ".mrEnableIrradiance");
+	editorTemplate -dimControl $nodeName "mrIrradiance" (!$irradEnabled);
+}
+
+
+global proc AEshaveGlobalsShadowMatteChange(string $nodeName)
+{
+	//
+	// If shadowMatte has been turned on, turn doCompositing off.
+	//
+	int	$matteOn = getAttr($nodeName + ".shadowMatte");
+
+	if (getAttr($nodeName + ".doCompositing") && $matteOn)
+	{
+		setAttr ($nodeName + ".doCompositing") false;
+	}
+
+	editorTemplate -dimControl $nodeName "shadowMatteIncludeBackfacing" (!$matteOn);
+}
+
+
+global proc AEshaveGlobals_statFileDirBrowse(string $nodeAndAttr)
+{
+	global string	$gDefaultFileBrowserDir;
+
+	string	$dir = getAttr($nodeAndAttr);
+
+	if (!`filetest -d $dir`) $dir = dirname($dir);
+
+	if ($dir != "") $gDefaultFileBrowserDir = $dir;
+
+	fileBrowser "AEshaveGlobals_statFileDirBrowseDone" "Set Stat Dir" "" 4;
+}
+
+
+global proc AEshaveGlobals_statFileDirBrowseDone(string $dir, string $type)
+{
+	if (!`filetest -d $dir`)
+	{
+		//
+		// Either the directory doesn't exist or it exists but is not a
+		// directory.
+		//
+		// If it's the former then prompt for creation.  If the latter then
+		// give an error.
+		//
+		if (!`filetest -f $dir`)
+		{
+			string	$answer = `confirmDialog -title "Directory Does Not Exist"
+				-m (  "The directory '" + $dir + "' does not exist.\n\n"
+					+ "Do you want to create it?")
+				-b "Yes" -b "No" -db "Yes" -cb "No" -ds "No"`;
+
+			if ($answer == "Yes")
+			{
+				if (!`sysFile -makeDir $dir`)
+				{
+					confirmDialog -title "Cannot Create Directory"
+						-message ("The directory '" + $dir + "'\n"
+							+ "could not be created. Please check your access\n"
+							+ "privileges or specify a different directory.");
+
+					return;
+				}
+			}
+		}
+		else
+		{
+			confirmDialog -title "Invalid Directory"
+				-m ("'" + $dir + "' is not a directory.");
+			return;
+		}
+	}
+
+	setAttr -type "string" shaveGlobals.tmpDir $dir;
+
+	if (`window -ex projectViewerWindow`)
+		window -e -vis false projectViewerWindow;
+}
+
+
+global proc AEshaveGlobals_statDirNew(string $nodeAndAttr)
+{
+	textFieldButtonGrp -l "Stat File Directory"
+		-bl "Browse..." -bc "AEshaveGlobals_statFileDirBrowse" -cw 3 70
+		"AEshaveGlobals_statDirField";
+
+	AEshaveGlobals_statDirReplace($nodeAndAttr);
+}
+
+
+global proc AEshaveGlobals_statDirReplace(string $nodeAndAttr)
+{
+	textFieldButtonGrp -e
+		-bc ("AEshaveGlobals_statFileDirBrowse \"" + $nodeAndAttr + "\"")
+		"AEshaveGlobals_statDirField"; 
+
+	connectControl -index 2 "AEshaveGlobals_statDirField" $nodeAndAttr;
+}
+
+
+global proc AEshaveGlobals_tileMemoryLimitNew(string $nodeAndAttr)
+{
+	intFieldGrp -l "Tile Memory Limit" -extraLabel "MB" -cal 3 "left"
+		AEshaveGlobals_tileMemoryLimitField;
+
+	AEshaveGlobals_tileMemoryLimitReplace($nodeAndAttr);
+}
+
+
+global proc AEshaveGlobals_tileMemoryLimitReplace(string $nodeAndAttr)
+{
+	connectControl -index 2 AEshaveGlobals_tileMemoryLimitField $nodeAndAttr;
+}
+
+
+global proc AEshaveGlobalsTemplate(string $nodeName)
+{
+	string	$renderer = shave_selectedRenderer();
+	int		$mode = getAttr($nodeName + ".renderMode");
+	int		$mayaVersion[] = shave_getMayaVersion();
+
+	editorTemplate -beginScrollLayout;
+		editorTemplate -callCustom "AEshaveGlobals_renderModeNew"
+			"AEshaveGlobals_renderModeReplace" "renderMode";
+
+		editorTemplate -beginLayout "General" -collapse false;
+			editorTemplate -addControl "enableInstanceGeometry";
+			editorTemplate -addControl "hideHair";
+			editorTemplate -interruptOptimize;
+			editorTemplate -addControl "voxelResolution";
+			editorTemplate -addControl "threadPerProcessor"
+				"AEshaveGlobalsDimControls";
+			editorTemplate -addControl "maxThreads";
+			editorTemplate -callCustom "AEshaveGlobals_tileMemoryLimitNew"
+				"AEshaveGlobals_tileMemoryLimitReplace" "tileMemoryLimit";
+			editorTemplate -addControl "transparencyDepth";
+			editorTemplate -addControl "verbose";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Display" -collapse true;
+			editorTemplate -addControl "displayGuides";
+	//		editorTemplate -l "Display Hair As" -addControl "displayAs";
+			editorTemplate -l "Preview %" -addControl "displayHairRatio";
+			editorTemplate -l "Interactive %"  -addControl "displayFallbackRatio";
+			editorTemplate -l "Segments %" -addControl "displaySegmentLimit";
+			editorTemplate -l "Guide Thickness" -addControl "displayGuideThick";
+			editorTemplate -l "Use Transparency" -addControl "displayHairTransprency";
+			editorTemplate -l "Use SSAO" -addControl "displayHairSsao";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Primitives Visibility" -collapse ($mode == 0);
+		editorTemplate -beginNoOptimize;
+			editorTemplate -label "Camera" -addControl "primCameraVis";
+			editorTemplate -label "Lights" -addControl "primLightVis";
+			editorTemplate -label "GI" -addControl "primGiVis";
+		editorTemplate -endNoOptimize;	
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Buffer Mode" -collapse ($mode != 0);
+			editorTemplate -addControl "renderQuality";
+
+			editorTemplate -callCustom "AEshaveGlobals_compositingNew"
+				"AEshaveGlobals_compositingReplace" "doCompositing" "composite2d";
+
+			editorTemplate -label "Occlusion Objects"
+				-addControl "hairOcclusionObjects";
+
+			editorTemplate
+				-addControl "shadowMatte" "AEshaveGlobalsShadowMatteChange";
+
+			editorTemplate -l "Include Backfacing Polys"
+				-addControl "shadowMatteIncludeBackfacing";
+
+			editorTemplate -interruptOptimize;
+
+			editorTemplate -l "Visible In Reflections/Refractions"
+				-addControl "visibleInReflections";
+
+			editorTemplate -addSeparator;
+//
+//				Geom Shadows are currently semi-deprecated, meaning that
+//				we've hidden the functionality but are keeping it around
+//				just-in-case.
+//
+//				editorTemplate -callCustom "AEshaveGlobals_shadowsNew"
+//					"AEshaveGlobals_shadowsReplace" "doHairShadows" "useGeomForShadows";
+
+			editorTemplate -addControl "doHairShadows"
+				"AEshaveGlobalsDimControls";
+
+			editorTemplate -label "Cast Shadow Density"
+				-addControl "shadowDensity";
+
+			editorTemplate -addControl "nativeIllumination"
+				"AEshaveGlobalsDimControls";
+
+			editorTemplate -interruptOptimize;
+
+			editorTemplate -addControl "useAllLights";
+
+			editorTemplate -addSeparator;
+
+			editorTemplate -label "Output Hair Images"
+				-addControl "keepHairPassPics" "AEshaveGlobalsDimControls";
+
+			editorTemplate -label "Image File Prefix"
+				-addControl "hairFilenamePrefix";
+		editorTemplate -endLayout;
+
+		if ($renderer == "mentalRay")
+		{
+			editorTemplate -beginLayout "Mental Ray" -collapse ($mode != 2);
+				editorTemplate 
+					-label "MR force 'Rapid Motion' setting"  //"MR Globals 'Safe' Mode"
+					-addControl "mrSafeMode";
+
+				editorTemplate -interruptOptimize;
+
+				//
+				// Mental Ray Satellite didn't appear until Maya 6.5
+				//
+				if (($mayaVersion[0] > 6)
+				||	(($mayaVersion[0] == 6) && ($mayaVersion[1] >= 5)))
+				{
+					editorTemplate -label "Satellite Support"
+						-addControl "mrSatelliteSupport";
+
+					editorTemplate -interruptOptimize;
+				}
+
+				editorTemplate -label "Use Render Globals Callbacks"
+					-addControl "mrUseRenderGlobalsCallbacks";
+
+				editorTemplate -interruptOptimize;
+
+				editorTemplate -label "Enable Irradiance"
+					-addControl "mrEnableIrradiance"
+					"AEshaveGlobalsDimControls";
+
+				editorTemplate -label "Irradiance" -addControl "mrIrradiance";
+
+//				editorTemplate -label "Render In Shader"
+//					-addControl "useDRA" "AEshaveGlobalsDimControls";
+				editorTemplate -suppress "useDRA";
+				
+				//shave 5.5 params = vlad|30Jun2010
+				editorTemplate  -addSeparator;
+				
+				//editorTemplate -label "Eye"
+				//	-addControl "mrVisEye";
+				//	
+				//editorTemplate -label "Shadow"
+				//	-addControl "mrVisShad";
+				//	
+				//editorTemplate -label "Reflection"
+				//	-addControl "mrVisRefl";
+				//	
+				//editorTemplate -label "Refraction"
+				//	-addControl "mrVisRefr";
+				//	
+				//editorTemplate -label "Irradiance"
+				//	-addControl "mrVisIrrad";
+
+				if (false)
+				{
+					// These features are not yet functional.
+					editorTemplate -callCustom
+						"AEshaveGlobals_mrOcclusionCollectionNew"
+						"AEshaveGlobals_mrOcclusionCollectionReplace"
+						"mrOcclusionCollection";
+				}
+			editorTemplate -endLayout;
+		}
+		else
+		{
+			editorTemplate -suppress "mrSafeMode";
+			editorTemplate -suppress "mrSatelliteSupport";
+			editorTemplate -suppress "mrUseRenderGlobalsCallbacks";
+			editorTemplate -suppress "useDRA";
+		}
+
+		editorTemplate -beginLayout "Dynamics" -collapse true;
+			editorTemplate -addControl "gravity";
+
+			editorTemplate -callCustom "AEshaveGlobals_statDirNew"
+				"AEshaveGlobals_statDirReplace" "tmpDir";
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Instances" -collapse true;
+			editorTemplate -addControl "glInstances";
+			//editorTemplate -callCustom "glInstancesNew" "glInstancesEdit" "glInstances" /*$nodeName*/;
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Renderman" -collapse true;
+			editorTemplate -addControl "hairPrimitiveType";
+			editorTemplate -label "Global RIB Text" -addControl "ribStuff";
+
+			editorTemplate -label "Keep RIB Files" -addControl "ribKeepRibFiles";
+			editorTemplate -interruptOptimize;
+			editorTemplate -label "Export Root/Tip Colors" -addControl "ribRootTipColors";
+			editorTemplate -label "Export Vert Colors" -addControl "ribVertexColors";
+
+			editorTemplate -label "Export Normals" -addControl "ribNormals";
+			editorTemplate -label "Export Opacity" -addControl "ribOpacities";
+
+			editorTemplate -label "Export W Coords" -addControl "ribWCoords";
+			editorTemplate -label "Export Root Positions" -addControl "ribRootPositions";
+
+			editorTemplate -label "Export UVs" -addControl "ribUVs"
+				"AEshaveGlobalsDimControls";
+			editorTemplate -label "UV Set" -addControl "ribUVSet";
+			editorTemplate -label "Export Time As" -addControl "ribTimeUnits";
+
+			editorTemplate -label "Binary" -addControl "ribBinary";
+			editorTemplate -label "Compress" -addControl "ribCompress";
+
+			editorTemplate -addSeparator;
+
+			editorTemplate -label "Inherit Settings"
+				-addControl "ribBlurInheritSettings"
+				"AEshaveGlobalsDimControls";
+			editorTemplate -label "Enable Motion Blur"
+				-addControl "ribBlurEnable"
+				"AEshaveGlobalsDimControls";
+			editorTemplate -label "Shutter Times Are" -addControl "ribBlurTimeBasis";
+			editorTemplate -label "Shutter Open Offset" -addControl "ribBlurShutterOpenOffset";
+			editorTemplate -label "Shutter Close Offset" -addControl "ribBlurShutterCloseOffset";
+			editorTemplate -label "Restore Frame" -addControl "ribBlurRestoreFrame";
+
+			editorTemplate -addSeparator;
+
+			editorTemplate -label "Enable Voxels" -addControl "ribVoxelEnable"
+					"AEshaveGlobalsDimControls";
+			editorTemplate -label "Use Full Paths" -addControl "ribVoxelFullPaths";
+			editorTemplate -label "Resolution" -addControl "ribVoxelResolution";
+
+			editorTemplate -addSeparator;
+
+			editorTemplate -callCustom "AEshaveGlobals_rendermanResetNew"
+				"AEshaveGlobals_rendermanResetReplace";
+
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Styling" -collapse true;
+			editorTemplate -callCustom "AEshaveGlobals_fastBrushNew"
+				"AEshaveGlobals_fastBrushReplace";
+		editorTemplate -endLayout;
+
+		//
+		// Handle the standard node attributes.
+		//
+		AEdependNodeTemplate $nodeName;
+
+		//
+		// Display any dynamically added attributes.
+		//
+		editorTemplate -addExtraControls;
+
+		//
+		// We're handling these through custom controls, so let's not see
+		// them again.
+		//
+		editorTemplate -suppress "composite2d";
+		editorTemplate -suppress "displayLod";
+		editorTemplate -suppress "doCompositing";
+//		editorTemplate -suppress "doHairShadows";
+		editorTemplate -suppress "renderMode";
+		editorTemplate -suppress "tmpDir";
+		editorTemplate -suppress "useGeomForShadows";
+
+		//
+		// These features are not yet functional.
+		//
+		editorTemplate -suppress "mrEnableIrradiance";
+		editorTemplate -suppress "mrIrradiance";
+		editorTemplate -suppress "mrOcclusionCollection";
+
+		//
+		// We don't want to see these.
+		//
+		editorTemplate -suppress "caching";
+		editorTemplate -suppress "instanceRenderMode";
+		editorTemplate -suppress "nodeState";
+		editorTemplate -suppress "shadowHairRatio";
+		editorTemplate -suppress "shadowQuality";
+		editorTemplate -suppress "shadowResolution";
+		editorTemplate -suppress "shaveLightList";
+		editorTemplate -suppress "shaveShadFuzz";
+
+	editorTemplate -endScrollLayout;
+
+	AEshaveGlobalsDimControls("shaveGlobals");
+}
+
+global proc forceUpdate(string $nodeName)
+{
+	currentTime `currentTime -q`;
+}
+
+
+global proc AEshaveGlobals_cleanup()
+{
+	global int	$shave_watchDoCompositingJobID;
+	global int	$shave_watchDo2dCompositingJobID;
+	global int	$shave_watchDoShadowsJobID;
+	global int	$shave_watchUseGeomJobID;
+
+	shave_killJob($shave_watchDoCompositingJobID);
+	shave_killJob($shave_watchDo2dCompositingJobID);
+	shave_killJob($shave_watchDoShadowsJobID);
+	shave_killJob($shave_watchUseGeomJobID);
+}
+/*
+global proc glInstancesNew(string $node)
+{
+	print $node; print "\n";
+
+	//$use = getAttr($node + ".glInstances");
+	$use = getAttr($node);
+	checkBoxGrp 
+		-numberOfCheckBoxes 1 
+		-changeCommand1 ("shaveInstModeChanged " + $node)  
+		-label "Shaded Instances"
+		-value1 $use
+		glInstnacesCbx;
+}
+
+global proc glInstancesEdit(string $node)
+{
+	if(`checkBoxGrp -exists glInstnacesCbx`)
+	{
+		//$use = getAttr($node + ".glInstances");
+		$use = getAttr($node);
+		checkBoxGrp -e 
+		-v1 $use 
+		//-changeCommand1 ("shaveInstModeChanged " + $node)  
+		glInstnacesCbx;
+	}
+}
+
+global proc shaveInstModeChanged(string $node)
+{
+	if(`checkBoxGrp -exists glInstnacesCbx`)
+	{
+		$use = `checkBoxGrp -q -v1 glInstnacesCbx`;
+		//setAttr ($node + ".glInstances") $use;
+		setAttr $node $use;
+
+		string $shaveHairShapes[];
+		$shaveHairShapes = `ls -type shaveHair`;
+	
+		if (size($shaveHairShapes) > 0)
+		{
+			for ($shaveHairShape in $shaveHairShapes)
+				getAttr ($shaveHairShape + ".trigger");
+		}
+    }
+}
+*/
+//---------------------------------------------------------------------
+//
+//	Deprecated Procedures
+//
+//	These procedure support deprecated functions.  We keep them around
+//	for a little while just in case we change our minds.
+//
+//---------------------------------------------------------------------
+
+global proc AEshaveGlobals_shadowAttrsChanged(string $node)
+{
+	if (`optionMenuGrp -exists "AEshaveGlobals_shadowsFld"`)
+	{
+		int	$shadowsOn = getAttr($node + ".doHairShadows");
+		int	$useGeom = getAttr($node + ".useGeomForShadows");
+		int	$oldSelection = `optionMenuGrp -q -sl AEshaveGlobals_shadowsFld`;
+		int	$newSelection;
+
+		if (!$shadowsOn)
+			$newSelection = 1;
+		else if ($useGeom)
+			$newSelection = 3;
+		else
+			$newSelection = 2;
+
+		if ($newSelection != $oldSelection)
+			optionMenuGrp -e -sl $newSelection AEshaveGlobals_shadowsFld;
+	}
+}
+
+
+global proc AEshaveGlobals_shadowsChanged(string $node)
+{
+	int	$option = `optionMenuGrp -q -sl AEshaveGlobals_shadowsFld`;
+	int	$oldDoShadows = getAttr($node + ".doHairShadows");
+	int	$oldUseGeom = getAttr($node + ".useGeomForShadows");
+	int	$newDoShadows = $oldDoShadows;
+	int	$newUseGeom = $oldUseGeom;
+
+	switch ($option)
+	{
+		case 1:
+			$newDoShadows = false;
+		break;
+
+		case 2:
+			$newDoShadows = true;
+			$newUseGeom = false;
+		break;
+
+		case 3:
+			$newDoShadows = true;
+			$newUseGeom = true;
+		break;
+	}
+
+	if ($newDoShadows != $oldDoShadows)
+		setAttr ($node + ".doHairShadows") $newDoShadows;
+
+	if ($newUseGeom != $oldUseGeom)
+		setAttr ($node + ".useGeomForShadows") $newUseGeom;
+
+	AEshaveGlobalsDimControls($node);
+}
+
+
+global proc AEshaveGlobals_shadowsNew(string $doShadowsAttr, string $useGeomAttr)
+{
+	global int	$shave_watchDoShadowsJobID;
+	global int	$shave_watchUseGeomJobID;
+
+	string	$tmp[];
+
+	tokenize($doShadowsAttr, ".", $tmp);
+
+	string	$node = $tmp[0];
+
+	//
+	// Rather than a confusing pair of checkboxes, let's give the user a
+	// pull-down menu with sensible names for the valid settings.
+	//
+	optionMenuGrp -l "Shadows"
+			-cc ("AEshaveGlobals_shadowsChanged \"" + $node + "\"")
+			"AEshaveGlobals_shadowsFld";
+
+	menuItem -l "Off";
+	menuItem -l "Use Buffer" AEshaveGlobals_useBufferShadowsMenuItem;
+	menuItem -l "Use Geometry";
+	setParent ..;
+
+	$shave_watchDoShadowsJobID = -1;
+	$shave_watchUseGeomJobID = -1;
+
+	AEshaveGlobals_shadowsReplace($doShadowsAttr, $useGeomAttr);
+}
+
+
+global proc AEshaveGlobals_shadowsReplace(string $doShadowsAttr, string $useGeomAttr)
+{
+	global int	$shave_watchDoShadowsJobID;
+	global int	$shave_watchUseGeomJobID;
+
+	string	$tmp[];
+
+	tokenize($doShadowsAttr, ".", $tmp);
+
+	string	$node = $tmp[0];
+
+	shave_killJob($shave_watchDoShadowsJobID);
+	shave_killJob($shave_watchUseGeomJobID);
+
+	$shave_watchDoShadowsJobID = `scriptJob -ac $doShadowsAttr
+		("AEshaveGlobals_shadowAttrsChanged \"" + $node + "\"")`;
+
+	$shave_watchUseGeomJobID = `scriptJob -ac $useGeomAttr
+		("AEshaveGlobals_shadowAttrsChanged \"" + $node + "\"")`;
+
+	AEshaveGlobals_shadowAttrsChanged($node);
+}

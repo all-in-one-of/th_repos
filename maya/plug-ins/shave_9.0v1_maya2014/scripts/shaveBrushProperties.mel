@@ -1,0 +1,25 @@
+global string $shaveBrushProperties_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2006
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com).
+//
+
+global proc shaveBrushProperties()
+{
+	shaveCursorCtxCommonProperties("Brush", "shaveBrushCtx");
+}
+
+
+global proc shaveBrushSetMode(int $mode)
+{
+	shaveBrushSetModeButton($mode);
+
+	string	$ctx = `currentCtx`;
+
+	shaveBrushCtx -e -m $mode $ctx;
+}

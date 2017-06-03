@@ -1,0 +1,453 @@
+
+global string $shavePresetWin_fileVersion = "$Revision$";
+
+//	global float $gAEAttrPresetBlend contains blend fraction
+//	global string $gAEAttrPresetCurrentTarget  contains name of target node
+//
+//  Then just execute the .mel file.
+//
+
+proc string getShavePresetDir(string $basePath)
+{
+	string	$paths[];
+
+	//	'basePath' may be a list of paths, so split them apart.
+	if (`about -win`)
+		tokenize $basePath ";" $paths;
+	else
+		tokenize $basePath ":" $paths;
+
+	//	Look for a path which contains some shaveHair preset files.
+	string	$path;
+	for ($path in $paths)
+	{
+		$path += "/attrPresets/shaveHair/";
+		string	$files[] = `getFileList -folder $path -fs "*.mel"`;
+
+		if (size($files) > 0) return $path;
+	}
+
+	return "";
+}
+
+
+proc string getSwatchName(string $preset, string $tabName)
+{
+	//
+	// Maya's icon caching ignores the directory portion of the icon's
+	// pathname, so we have to ensure that icons, even in different
+	// directories, have different names.
+	//
+	// We do this by inserting the first char of the tab name into the
+	// icon's file name, so make sure that your tab names are distinct in
+	// the first char.
+	//
+	return ($preset + "_" + substring($tabName, 1, 1) + "_swatch.xpm");
+}
+
+
+proc int isAProcedure(string $variable)
+{
+    int $length = size($variable);
+    if ($length < 2)
+    {
+        // Too short to have "()" in it.
+        //
+        return false;
+    } 
+    
+    int $secondLast = $length -1;
+    if (`substring $variable $secondLast $length` == "()")
+    {
+        return true;
+    }
+    return false;
+}
+
+
+global proc shavePreset_doCallback(string $preset)
+{
+	global string	$shavePreset_callbackCmd;
+
+	if ($shavePreset_callbackCmd != "")
+		evalEcho($shavePreset_callbackCmd + " \"" + $preset + "\"");
+
+if (`window -exists shavePresetWindow`) {
+               //      Maya bug: The button that the user clicked on still has some
+               //      outstanding internal events. If we destroy it here then those
+               //      events will be referencing a deleted button and Maya may crash.
+               //      So we put the destruction of the window onto the idle queue so
+               //      that it won't happen until after the button's events have
+               //      finished up.
+               evalDeferred("deleteUI shavePresetWindow");
+       }
+}
+
+
+proc int createTab(string $tabName, string $dir)
+{
+	string	$presets[] = `getFileList -folder $dir -fs "*.mel"`;
+	int		$numPresets = size($presets);
+	string	$scrollLayout = "shave" + $tabName + "Presets";
+	string	$gridLayout = $scrollLayout + "Grid";
+
+	//
+	// Create a grid layout capable of holding all the presets and add it
+	// to the window's tab layout.
+	//
+	scrollLayout -p shavePresetTabs $scrollLayout;
+	tabLayout -e -tabLabel $scrollLayout $tabName shavePresetTabs;
+
+	if ($numPresets > 0)
+	{
+		gridLayout -nc 5 -cwh 100 120 -autoGrow true -p $scrollLayout $gridLayout;
+
+		//
+		// Find the default swatch, just in case we need it.
+		//
+		string	$searchPath = getenv("XBMLANGPATH");
+		string	$searchDirs[];
+
+		if (`about -nt`)
+			tokenize($searchPath, "%B;", $searchDirs);
+		else
+			tokenize($searchPath, "%B:", $searchDirs);
+
+		string	$defaultSwatch = searchPathArray(
+									"shaveDefaultSwatch.xpm", $searchDirs
+								);
+
+		//
+		// Step through each preset and add a button for it to the row layout.
+		//
+		string	$preset;
+
+		for ($preset in $presets)
+		{
+			$preset = basename($preset, ".mel");
+
+			//
+			// If we can't find a swatch specific to this preset, then use
+			// the default.
+			//
+			string $icon = $dir + getSwatchName($preset, $tabName);
+
+			if (!`filetest -r $icon`) $icon = $defaultSwatch;
+
+			//
+			// Create the button.
+			//
+			iconTextButton -p $gridLayout
+				-st "iconAndTextVertical" -l $preset
+				-width 100 -height 120 -i1 $icon
+				-c ("shavePreset_doCallback(\"" + $dir + $preset + ".mel\")");
+		}
+	}
+	else
+	{
+		gridLayout -p $scrollLayout $gridLayout;
+	}
+
+	return $numPresets;
+}
+
+
+global proc shavePresetWin(string $cmd)
+{
+	global string	$shavePreset_callbackCmd;
+
+	$shavePreset_callbackCmd = $cmd;
+
+	if (`window -exists shavePresetWindow`) deleteUI shavePresetWindow;
+	
+	//does not seem help
+	//if (`window -exists shavePresetWindow`) {
+    //           //      Maya bug: The button that the user clicked on still has some
+    //           //      outstanding internal events. If we destroy it here then those
+    //           //      events will be referencing a deleted button and Maya may crash.
+    //          //      So we put the destruction of the window onto the idle queue so
+    //          //      that it won't happen until after the button's events have
+    //           //      finished up.
+    //           evalDeferred("deleteUI shavePresetWindow");
+    //   }
+
+	window shavePresetWindow;
+
+	tabLayout -cc "shavePreset_tabChanged" shavePresetTabs;
+
+	string	$dir;
+
+	//
+	// Has the user provided an override for the Shave presets?
+	//
+	$dir = getenv("SHAVE_COMMON_PRESET_PATH");
+
+	if ($dir == "")
+	{
+		//
+		// Okay, how about a generic override for the location of all
+		// Shave-related files?
+		//
+		$dir = getenv("SHAVE_LOCATION");
+
+		if ($dir != "")
+		{
+			//
+			// They might have overridden SHAVE_LOCATION for some reason
+			// other than presets, so let's make sure that the presets are
+			// actually there.
+			//
+			$dir = getShavePresetDir($dir + "/presets");
+		}
+
+		if ($dir == "")
+		{
+			//	Check MAYA_PRESET_PATH
+			$dir = getShavePresetDir(getenv("MAYA_PRESET_PATH"));
+
+			if ($dir == "")
+			{
+				// No overrides, so go with Maya's default location.
+				$dir = getenv("MAYA_LOCATION") + "/presets/attrPresets/shaveHair/";
+			}
+		}
+	}
+	else
+	{
+		if (substring($dir, size($dir), size($dir)) != "/")
+			$dir += "/";
+	}
+
+	int	$numCommonPresets = createTab("Common", $dir);
+
+	$dir = `internalVar -userPrefDir`;
+	$dir = substitute("prefs", $dir, "presets/attrPresets");
+	$dir += "shaveHair/";
+
+	int		$numPersonalPresets = createTab("Personal", $dir);
+
+	//
+	// Return the user to whichever tab zie was last on.  If this is the
+	// first time and there is no current tab, then default to the user's
+	// personal tab, if it exists, otherwise to the common tab.
+	//
+	string	$curTab = "";
+
+	if (`optionVar -exists shavePreset_curTab`)
+		$curTab = `optionVar -q shavePreset_curTab`;
+
+	if (($curTab != "shaveCommonPresets")
+	&&	($curTab != "shavePersonalPresets"))
+	{
+		if (($numPersonalPresets == 0) && ($numCommonPresets > 0))
+			$curTab = "shaveCommonPresets";
+		else
+			$curTab = "shavePersonalPresets";
+	}
+
+	tabLayout -e -selectTab $curTab shavePresetTabs;
+
+	optionVar -sv shavePreset_curTab $curTab;
+
+	showWindow shavePresetWindow;
+
+	//
+	// Make sure that all the button icons are up-to-date.
+	//
+	shavePreset_synchIcons();
+}
+
+
+global proc shavePreset_synchIcons()
+{
+	if (`window -exists shavePresetWindow`)
+	{
+		string	$buttons[] = `gridLayout -q -ca shaveCommonPresetsGrid`;
+		int		$numButtons = size($buttons);
+		int		$i;
+
+		for ($i = 0; $i < $numButtons; $i++)
+		{
+			string $icon = `iconTextButton -q -i1 $buttons[$i]`;
+
+			if (`shaveIcon -needsReload $icon`)
+				reloadImage $icon $buttons[$i];
+		}
+
+		$buttons = `gridLayout -q -ca shavePersonalPresetsGrid`;
+		$numButtons = size($buttons);
+
+		for ($i = 0; $i < $numButtons; $i++)
+		{
+			string $icon = `iconTextButton -q -i1 $buttons[$i]`;
+
+			if (`shaveIcon -needsReload $icon`)
+				reloadImage $icon $buttons[$i];
+		}
+	}
+}
+
+
+global proc shavePreset_tabChanged()
+{
+	if (`tabLayout -exists shavePresetTabs`)
+	{
+		string	$curTab = `tabLayout -q -selectTab shavePresetTabs`;
+
+		optionVar -sv shavePreset_curTab $curTab;
+	}
+}
+
+
+global proc shavePreset_apply(string $preset, string $shaveNode)
+{
+	global float $gAEAttrPresetBlend;
+	global string $gAEAttrPresetCurrentTarget;
+
+	$gAEAttrPresetBlend = 1.0;
+	$gAEAttrPresetCurrentTarget = $shaveNode;
+
+	eval("source \"" + $preset + "\"");
+	
+	//need to set guide thinkess param
+	//float $thick = getAttr($shaveNode + ".rootThickness");
+	//setAttr($shaveNode + ".displayGuideThick") $thick;
+}
+
+
+//
+// psWinSavePreset is a procedure defined in Maya's saveAttrPresetWin.mel
+// script file.  It is called whenever a new preset is saved.
+//
+// We override it here with our own version which is a duplicate of Maya's
+// (as of Maya 6.0 thru 7.0) except that if the node is a shaveNode, then we
+// also generate a swatch for it.
+//
+global proc psWinSavePreset()
+{
+	global string $gTmpAttrPresetNameField;
+	global string $gTmpAttrPresetNodeName;
+
+    // We use a nodeName ending with "()" to indicate that
+    // instead of a node, we passed a procedure for creating
+    // the node on the fly, and we want the node to be deleted
+    // after it is used.
+    //
+    int $needToDeleteNode = false;
+    if (isAProcedure($gTmpAttrPresetNodeName))
+    {
+		// suspect we don't ever use the temp node any more
+        $gTmpAttrPresetNodeName = eval($gTmpAttrPresetNodeName);
+        $needToDeleteNode = true;
+    }
+
+	if (objExists($gTmpAttrPresetNodeName)) {
+		string $presetName = `textFieldGrp -q -text $gTmpAttrPresetNameField`;
+
+		string $actualName = `saveAttrPreset $gTmpAttrPresetNodeName $presetName false`;
+
+		// if we saved something, close the window
+		// otherwise the user might want a different name
+		if (size($actualName) > 0) {
+			window -e -visible false attrPresetWin;
+
+			string	$nodeType = nodeType($gTmpAttrPresetNodeName);
+
+			if ($nodeType == "shaveHair")
+			{
+				//
+				// The final name of the preset may not be the same as what we
+				// originally requested, so extract the preset name from the
+				// output file name.
+				//
+				$presetName = basename($actualName, ".mel");
+
+				string $swatch = `internalVar -userPrefDir`;
+
+				$swatch = substitute("prefs", $swatch, "presets/attrPresets");
+				$swatch = $swatch + $nodeType + "/" + getSwatchName($presetName, "Personal"); 
+
+				waitCursor -state on;
+				shaveRender -swatch $gTmpAttrPresetNodeName 100 $swatch;
+				waitCursor -state off;
+
+				//
+				// If the preset window is up, refresh it.
+				//
+				if (`window -exists shavePresetWindow`)
+				{
+					global string	$shavePreset_callbackCmd;
+
+					shavePresetWin $shavePreset_callbackCmd;
+				}
+			}
+		}
+	} else {
+		warning "Nothing selected, can't save attribute preset.";
+		window -e -visible false attrPresetWin;
+	}
+
+    if ($needToDeleteNode && $gTmpAttrPresetNodeName != "")
+    {
+        delete $gTmpAttrPresetNodeName;
+    }
+}
+
+
+//
+// deleteSelectedAttrPresets is a procedure defined in Maya's
+// attrPresetEditWin.mel script file.  It is called whenever an existing
+// preset is deleted.
+//
+// We override it here with our own version which is a duplicate of Maya's
+// (as of Maya 6.0 thru 7.0) except that if the node is a shaveNode, then we
+// also delete its swatch, if present.
+//
+global proc deleteSelectedAttrPresets(){
+	global string $gApeWinPresetList;
+	global string $gApeWinNodeType;
+
+	if( "" == $gApeWinPresetList ){
+		return;
+	}
+	if( "" == $gApeWinNodeType ){
+		return;
+	}
+
+	string $nodeType = $gApeWinNodeType;
+	string $ppath = `internalVar -userPrefDir`;
+	$ppath = substitute("prefs", $ppath, "presets/attrPresets");
+	$ppath  = $ppath + $nodeType; 
+
+	string $selectedPresets[] = `textScrollList -q -si $gApeWinPresetList`;
+	string $preset;
+	string $someWereShaveNodes = false;
+
+	for ( $preset in $selectedPresets ){
+		sysFile -delete ($ppath + "/" + $preset + ".mel");
+
+		if ($nodeType == "shaveHair")
+		{
+			string	$swatchFile;
+
+			$someWereShaveNodes = true;
+			$swatchFile = $ppath + "/" + getSwatchName($preset, "Personal");
+
+			if (`filetest -r $swatchFile`) sysFile -delete $swatchFile;
+		}
+	}
+
+	if (size($selectedPresets) > 0){
+		updateAPEWinNodetype($nodeType);
+	}
+
+	if ($someWereShaveNodes && `window -exists shavePresetWindow`)
+	{
+		global string	$shavePreset_callbackCmd;
+
+		shavePresetWin $shavePreset_callbackCmd;
+	}
+	
+	
+}
+

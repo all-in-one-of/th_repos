@@ -1,0 +1,98 @@
+Shave And A Haircut APIs
+------------------------
+There are two APIs for use with Shave: a standalone API for building
+applications which process Shave archive files (such as those produced by
+the 'shaveRender -createDRAFile' command in Maya), and a plugin API for
+building Maya plugins which can access Shave's data from within Maya.
+
+
+Standalone API
+--------------
+The standalone API consists of the following two header files, found in this
+directory:
+
+	shaveEngine.h
+	shaveSDKTYPES.h
+
+as well as the following dynamic library and its corresponding link
+library, both also found in this directory:
+
+	libShaveEngine.dll
+	libShaveEngine.lib
+
+To use the DLL library you must either place it in a folder which is in
+your PATH, or else add the folder it is currently in to your PATH.
+
+
+Sample Application
+------------------
+'shaveAPITestApp.cpp' is a sample application using Shave's standalone API.
+
+Project files have been provided for building the plugin under Visual
+C++ 6.0 and Visual C++.NET 7.0:
+
+	Visual C++
+	Version		Project Files		Configurations
+	----------	-------------		-------------
+	   6.0		shaveAPISamples.dsw	Debug/Release
+			shaveAPITestApp.dsp
+
+	   7.0		shaveAPISamples.sln	Debug/Release
+			shaveAPITestApp.vcproj
+
+
+Maya Plugin API
+---------------
+The Maya plugin API consists of the following two header files, found in the
+same directory as Maya's own API header files
+(e.g. c:\Program Files\Alias\maya7.0\include\maya):
+
+	shaveAPI.h
+	shaveItHair.h
+
+as well as the following dynamic library, found in Maya's 'bin' directory
+(e.g. c:\Program Files\Alias\maya7.0\bin):
+
+	libShaveAPI.dll
+
+The associated link library is in Maya's 'lib' directory
+(e.g. c:\Program Files\Alias\maya7.0\lib):
+
+	libShaveAPI.lib
+
+The header files contain complete documentation on the plugin API.
+
+
+Sample Plugin
+-------------
+'shaveAPITestCmd.cpp' is a sample Maya plugin using Shave's plugin API.
+
+Project files have been provided for building the plugin under Visual
+C++ 6.0 and Visual C++.NET 7.0.
+
+Within each project file are separate configurations for the different Maya
+versions supported by Shave:
+
+    Maya	Visual C++
+  Version	  Version	Project Files		Configurations
+  --------	----------	-------------		-------------
+  5.0/5.0.1	   6.0		shaveAPISamples.dsw	Debug50/Release50
+	     			shaveAPITestCmd.dsp
+
+    6.0		   7.0		shaveAPISamples.sln	Debug60/Release60
+	     			shaveAPITestCmd.vcproj
+
+    6.5		   7.0		shaveAPISamples.sln	Debug65/Release65
+				shaveAPITestCmd.vcproj
+
+    7.0		   7.0		shaveAPISamples.sln	Debug70/Release70
+				shaveAPITestCmd.vcproj
+
+To build the sample plugin for a specific version of Maya, you must have the
+corresponding environment variable defined and pointing to the directory in
+which that version of Maya is installed.
+
+For example, if you want to build the 'Release70' version of the
+shaveAPITestCmd plugin, you would need to have an environment variable named
+MAYA_7_0_LOCATION defined and pointing to the directory where Maya 7.0 is
+installed (e.g. C:\Program Files\Alias\Maya7.0)

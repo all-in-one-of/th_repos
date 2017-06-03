@@ -1,0 +1,409 @@
+global string $shaveRenderman_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2007
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com)
+//
+
+//	WARNING:	The rman plugin may not be loaded when this script gets
+//				sourced so all references to commands from that plugin
+//				(e.g. 'rman', 'rmanGetGlobals', 'RiReadArchive') must be
+//				executed within an 'eval' otherwise the results will be
+//				unpredictable.
+
+global	int		$gShave_rmanPluginIsLoaded = false;
+global	int		$gShave_rmanWaitingForPlugin = false;
+global	string	$gShave_rmanArchiveFiles[];
+
+
+//	Local Procedures
+
+//	We need this because all of Maya's native string search commands take
+//	some kind of pattern and we don't want any "special chars" in our
+//	search.
+proc int strIndex(string $needle, string $haystack)
+{
+	int	$needleLen = size($needle);
+	int	$haystackLen = size($haystack);
+	int	$i;
+
+	for ($i = 1; $i <= ($haystackLen - $needleLen) + 1; $i++)
+	{
+		if (substring($haystack, $i, $i + $needleLen - 1) == $needle)
+			return $i;
+	}
+
+	return 0;
+}
+
+
+proc addShaderPath()
+{
+	//	Our shader sits in the 'prman/lib/shaders' directory beneath the
+	//	same directory as our plugin was loaded from. Let's update
+	//	RenderMan's shader path to include this directory.
+	string	$shaderDir = dirname(`pluginInfo -q -path shaveNode`) + "/prman/lib/shaders";
+	string	$path = getAttr("renderManGlobals.rman__riopt__searchpath_shader");
+
+	//	If the directory isn't already there, add it.
+	if (strIndex($shaderDir, $path) == 0)
+	{
+		if ($path == "")
+			$path = $shaderDir;
+		else
+			$path += ":" + $shaderDir;
+
+		setAttr -type "string" renderManGlobals.rman__riopt__searchpath_shader
+			$path;
+	}
+}
+
+
+proc removeCallback(string $node, string $attr, string $callback)
+{
+	if (objExists($node) && `attributeExists $attr $node`)
+	{
+		string	$val = getAttr($node + "." + $attr);
+
+		//	The callback might be one command buried in a string of
+		//	semi-colon separate commands. So let's strip out all the
+		//	possible permutations.
+		$val = substitute((";[ \t]*" + $callback + "[ \t]*"), $val, "");
+		$val = substitute(("[ \t]*" + $callback + "[ \t]*;"), $val, "");
+		$val = substitute(("[ \t]*" + $callback + "[ \t]*"), $val, "");
+
+		setAttr -type "string" ($node + "." + $attr) $val;
+	}
+}
+
+
+proc addCallback(string $node, string $attr, string $callback)
+{
+	if (objExists($node) && `attributeExists $attr $node`)
+	{
+		//	Make sure that we're not creating multiple entries for the same
+		//	callback by first removing any existing ones.
+		removeCallback($node, $attr, $callback);
+
+		string	$val = getAttr($node + "." + $attr);
+
+		if (($val == "") || (size(`match "^[ \t]*$" $val`) > 0))
+			$val = $callback;
+		else
+			$val += "; " + $callback;
+
+		setAttr -type "string" ($node + "." + $attr) $val;
+	}
+	else
+		warning("Shave: can not add callback, attribute not found.");
+}
+
+
+proc waitForPlugin()
+{
+	global	int	$gShave_rmanWaitingForPlugin;
+
+	if (!$gShave_rmanWaitingForPlugin)
+	{
+		pluginInfo -cc shave_rmanCheckNewPlugin;
+		$gShave_rmanWaitingForPlugin = true;
+	}
+}
+
+
+//	Global procedures
+global proc shave_rmanInit()
+{
+	//  we do not want to set callbacks in defaultRenderGlobals when loading renderman plugin - dub|22Jun2012
+	//  not clear why its handled diffent way then for other renderers
+	//shave_rmanSetupCallbacks();
+}
+
+global proc shave_rmanCleanup()
+{
+	//aslo we want to let these get saved with the scene - dub|22Jun2012
+	//  not clear why its handled diffent way then for other renderers
+	//shave_rmanRemoveCallbacks();
+}
+
+
+global proc shave_rmanSetupCallbacks()
+{
+	//print "tryint to set renderMan callbacks\n";
+	
+	//	If there's no shaveGlobals node yet then there can't be any hair in
+	//	the scene so there's no reason to set up callbacks yet.
+	
+	//no we can not do this cut off because render will fail with this steps:
+	//set renderer to prman, create hair, render
+	//if (!objExists("shaveGlobals"))
+	//{
+	//	//warning("Shave: shaveGlobals not found ");
+	//	return;
+	//}
+	
+	//	If the rman plugin isn't loaded yet, we'll need to wait for it.
+	if (!shave_rmanPluginIsLoaded())
+	{
+		waitForPlugin();
+		//warning("Shave: renderMan is not loaded.");
+		return;
+	}
+
+	if (!objExists("renderManGlobals"))
+	{
+		if (exists("rmanGetGlobals"))
+			eval("rmanGetGlobals");
+		else
+		{
+			warning("Shave: cannot find renderManGlobals node. Giving up.");
+			return;
+		}
+	}
+	
+	if (!objExists("renderManGlobals"))
+	{
+		warning("Shave: renderManGlobals not found. Giving up.");
+		return;
+	}
+
+	addCallback(
+		"renderManGlobals",
+		"rman__torattr___renderBeginScript",
+		"shave_rmanRenderStart"
+	);
+
+	addCallback(
+//		"renderManGlobals",
+		"defaultRenderGlobals",
+//		"rman__torattr___preRenderScript",
+		"preRenderMel",
+		"shave_rmanFrameStart"
+	);
+
+	addCallback(
+//		"renderManGlobals",
+		"defaultRenderGlobals",
+//		"rman__torattr___postRenderScript",
+		"postRenderMel",
+		"shave_rmanFrameEnd"
+	);
+
+	addCallback(
+		"renderManGlobals",
+		"rman__torattr___postTransformScript",
+		"shave_rmanInsertArchive"
+	);
+	
+	//print "done.\n";
+}
+
+
+global proc shave_rmanRemoveCallbacks()
+{
+	//print "renderMan callbacks removed\n";
+
+	removeCallback(
+		"renderManGlobals",
+		"rman__torattr___renderBeginScript",
+		"shave_rmanRenderStart"
+	);
+
+	removeCallback(
+//		"renderManGlobals",
+		"defaultRenderGlobals",
+//		"rman__torattr___preRenderScript",
+		"preRenderMel",
+		"shave_rmanFrameStart"
+	);
+
+	removeCallback(
+//		"renderManGlobals",
+		"defaultRenderGlobals",
+//		"rman__torattr___postRenderScript",
+		"postRenderMel",
+		"shave_rmanFrameEnd"
+	);
+
+	removeCallback(
+		"renderManGlobals",
+		"rman__torattr___postTransformScript",
+		"shave_rmanInsertArchive"
+	);
+}
+
+
+global proc shave_rmanRenderStart()
+{
+//	addShaderPath(); for installing the shaders in prman
+
+	//	We need to insert our archive under a suitable transform node.
+	//	Shave's group node would be fine for that, however we cannot guarantee
+	//	that it will be named 'shaveDisplayGroup': the user may have renamed it
+	//	or it may be prefaced by a namespace if loaded from a reference.
+	//  So let's just find the first hair node and use its group.
+	global string	$gShave_rmanTargetTransform;
+
+	string	$groups[] = shave_getDisplayGroups();
+
+	if (size($groups) > 0)
+		$gShave_rmanTargetTransform = $groups[0];
+	else
+		$gShave_rmanTargetTransform = "";
+}
+
+
+global proc string shave_rmanFrameStart()
+{
+	///////////////// dumps //////////////
+	/*
+	$mob =`getAttr renderManGlobals.rman__torattr___motionBlur`;
+	print "prman: Motion Blur:"; print $mob; print "\n";
+
+	$cab =`getAttr renderManGlobals.rman__torattr___cameraBlur`;
+	print "prman: Motion Blur:"; print $cab; print "\n";
+
+
+	$a =`getAttr renderManGlobals.rman__toropt___shutterAngle`;
+	print "prman: Sutter Angle:"; print $a; print "\n";
+
+	$o =`getAttr renderManGlobals.rman__riopt__Camera_shutteropening0`;
+	print "prman: Sutter Open:"; print $o; print "\n";
+
+
+	$c =`getAttr renderManGlobals.rman__riopt__Camera_shutteropening1`;
+	print "prman: Sutter Close:"; print $c; print "\n";
+
+
+	$t =`getAttr renderManGlobals.rman__toropt___shutterTiming`;
+	print "prman: Sutter Timing:"; print $t; print "\n";
+
+
+	$k =`getAttr renderManGlobals.rman__toropt___motionBlurType`;
+	print "prman: Blur Type:"; print $k; print "\n";
+	*/
+	//////////////////////////////////////
+	global	string	$gShave_rmanArchiveFiles[];
+
+	float	$frame = `currentTime -q`;
+	string	$dir = shaveGetTempDir();
+	string	$ribFile = `shaveUtil -makeTempFileName $dir "shave" ("." + $frame + ".rib")`;
+
+	$gShave_rmanArchiveFiles = `shaveWriteRib -fullPaths $ribFile`;
+
+	if (size($gShave_rmanArchiveFiles) == 0) return "";
+
+	return $gShave_rmanArchiveFiles[0];
+}
+
+
+global proc shave_rmanFrameEnd()
+{
+	global	string	$gShave_rmanArchiveFiles[];
+
+	if (objExists("shaveGlobals") && !getAttr("shaveGlobals.ribKeepRibFiles"))
+	{
+		string	$file;
+
+		for ($file in $gShave_rmanArchiveFiles)
+			sysFile -del $file;
+	}
+
+	clear $gShave_rmanArchiveFiles;
+}
+
+
+//	We no longer need this but some people have it embedded in their
+//	renderManGlobals now so we keep it around to prevent errors.
+global proc shave_rmanRenderEnd()
+{
+}
+
+
+global proc string shave_rmanGetReadArchiveCmd()
+{
+	global	string	$gShave_rmanArchiveFiles[];
+
+	if (size($gShave_rmanArchiveFiles) > 0)
+		return ("ReadArchive \"" + $gShave_rmanArchiveFiles[0] + "\"");
+
+	return "";
+}
+
+
+global proc shave_rmanInsertArchive()
+{
+	global string	$gShave_rmanTargetTransform;
+
+	string	$obj = eval("rman ctxGetObject");
+
+	if ($obj == $gShave_rmanTargetTransform)
+	{
+		global	string	$gShave_rmanArchiveFiles[];
+
+		//	If there are multiple files the first one is the base file which
+		//	includes all the others. So we always just want to emit the first
+		//	one into the RIB stream.
+		if (size($gShave_rmanArchiveFiles) > 0)
+		{
+			eval("RiReadArchive(\"" + $gShave_rmanArchiveFiles[0] + "\")");
+		}
+	}
+}
+
+
+global proc int shave_rmanPluginIsLoaded()
+{
+	if (`pluginInfo -q -loaded RenderMan_for_Maya`)
+	{
+		//	Only the 'Pro' version supports RIB insertion so make sure that
+		//	this is Pro.
+//		string	$version = `pluginInfo -q -version RenderMan_for_Maya`;
+
+//		return endsWith($version, "Pro");
+		string $isProVersion = eval("exists(\"RiAttribute\")");
+ 
+		return $isProVersion;
+	}
+
+	return false;
+}
+
+
+global proc shave_rmanCheckNewPlugin()
+{
+	print "shave_rmanCheckNewPlugin\n";
+	
+	//	There's no way to remove a pluginInfo callback if Shave is unloaded
+	//	so let's first make sure that Shave is still loaded.
+	if (`pluginInfo -q -loaded shaveNode`)
+	{
+		//print "plugInfo - OK\n";
+		
+		global	int	$gShave_rmanPluginIsLoaded;
+
+		//	Is the rman plugin loaded?
+		if (shave_rmanPluginIsLoaded())
+		{
+			//print "rmanPluginIsLoaded - OK\n";
+			
+			//	If it wasn't loaded before then do our rman initialization.
+			if (!$gShave_rmanPluginIsLoaded)
+			{
+				//print "gShave_rmanPluginIsLoaded - OK\n";
+				
+				$gShave_rmanPluginIsLoaded = true;
+				shave_rmanInit();
+			}
+		}
+		else
+		{
+			$gShave_rmanPluginIsLoaded = false;
+		}
+	}
+}
+

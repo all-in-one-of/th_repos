@@ -1,0 +1,12 @@
+global proc resetNormal()
+{
+string $selectMesh[] = `ls -sl`;
+    for ($s in $selectMesh)
+    {
+        polyAverageNormal -prenormalize 1 -allowZeroNormal 0 -postnormalize 0 -distance 0.1 -replaceNormalXYZ 1 0 0 $s;
+        polySetToFaceNormal $s;
+        polySoftEdge -a  120  -ch 1 $s;
+    }
+select -cl;
+}
+

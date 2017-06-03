@@ -1,0 +1,134 @@
+* {
+font-family:'微软雅黑';
+color:white;
+}
+
+/*设置背景图片*/
+QMainWindow#MainWindow{
+    border-width: 5px;
+    border-color: beige;
+    border-top-left-radius:15px;
+    border-top-right-radius:15px;
+    border: 2px solid #999;  
+}
+QLabel#titleLab {
+    font: 12pt "隶书";
+    color: rgb(0, 131, 200); 
+    padding: 3px;
+}
+
+/*设置按钮效果--star*/
+
+QPushButton#refresh_PB {
+
+    background-color: rgb(0,85,125);
+    border-style: outset;
+    border-width: 1px;
+    border-radius: 10px;
+    border-color: beige;
+    font: bold 10px;
+    min-width: 4em;
+    padding: 3px;
+}
+QPushButton#refresh_PB:hover {
+    background-color: rgb(0,137,200);
+    border-style: inset;
+}
+QPushButton#refresh_PB:pressed {
+    background-color: rgb(0, 0, 0);
+    border-style: inset;
+}
+
+QToolButton#getDecInfo_TB {
+    background-color: rgb(255,220,0);
+    border-style: outset;
+    border-width: 1px;
+    border-radius: 8px;
+    border-color: beige;
+    font: bold 10px;
+    min-width: 3em;
+    padding: 2px;
+}
+QToolButton#getDecInfo_TB:hover {
+    background-color: rgb(255,137,0);
+    border-style: inset;
+}
+QToolButton#getDecInfo_TB:pressed {
+    background-color: rgb(0, 0, 0);
+    border-style: inset;
+}
+
+QPushButton#gpuSLoad_PB {	
+	background-color: rgb(105, 170, 0);
+    border-radius: 3px;
+    border-style: outset;
+    border-width: 1px;
+    border-color: beige;
+}
+QPushButton#gpuSLoad_PB:hover {
+    background-color: rgb(133, 210, 0);
+    border-style: inset;
+}
+QPushButton#gpuSLoad_PB:pressed {
+    background-color: rgb(0, 0, 0);
+    border-style: inset;
+}
+
+QPushButton#gpuLoad_PB {	
+	background-color: rgb(170, 85, 0);
+    border-radius: 3px;
+    border-style: outset;
+    border-width: 1px;
+    border-color: beige;
+}
+QPushButton#gpuLoad_PB:hover {
+    background-color: rgb(200, 100, 0);
+    border-style: inset;
+}
+QPushButton#gpuLoad_PB:pressed {
+    background-color: rgb(0, 0, 0);
+    border-style: inset;
+}
+
+QPushButton#gpu2abc_PB {	
+    background-color: rgb(120, 130, 140);	
+    border-radius: 3px;
+    border-style: outset;
+    border-width: 1px;
+    border-color: beige;
+}
+QPushButton#gpu2abc_PB:hover {
+    background-color: rgb(130, 160, 200);
+    border-style: inset;
+}
+QPushButton#gpu2abc_PB:pressed {
+    background-color: rgb(0, 0, 0);
+    border-style: inset;
+}
+/*设置进度条效果--*/
+QProgressBar {
+    border: 2px solid grey;
+    border-radius: 8px;
+    text-align: center;
+
+}
+QProgressBar::chunk {
+    border-radius: 2px;
+
+    background-color: #05B8CC;
+    width: 9px;
+    margin: 0.5px;
+}
+/*设置表格效果--*/
+QTableView , QTableWidget{
+ selection-background-color:rgb(50, 80, 139);
+}
+/*这里是表格表头样式*/
+QHeaderView::section{
+ height:25px;/*表头高度*/
+ width:15px;
+
+}
+
+
+

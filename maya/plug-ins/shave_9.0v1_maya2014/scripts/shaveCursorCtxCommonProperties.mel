@@ -1,0 +1,94 @@
+global string $shaveCursorCtxCommonProperties_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2006
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com).
+//
+
+//
+// This is a common properties script for all shaveCursorCtx-based tools.
+//
+global proc shaveCursorCtxCommonProperties(string $toolName, string $ctxCmd)
+{
+	string	$parent = `toolPropertyWindow -q -location`;
+	setParent $parent;
+
+	setUITemplate -pushTemplate OptionsTemplate;
+
+	if (`columnLayout -q -exists shaveCursor`) deleteUI shaveCursor;
+
+	columnLayout shaveCursor;
+	{
+		frameLayout -collapsable true -collapse false
+				-l $toolName shaveCursorFrame;
+		{
+			columnLayout;
+			{
+				floatSliderGrp -field true -l "Size"
+					-ann "Brush size, relative to size of current view"
+					-min 0.0 -max 1.0
+					-cc ($ctxCmd + " -e -brushSize #1 `currentCtx`")
+					shaveCursorSize;
+
+				floatSliderGrp -field true -l "Strength"
+					-ann "Brush strength"
+					-min 0.0 -max 1.0
+					-cc ($ctxCmd + " -e -brushStren #1 `currentCtx`")
+					shaveCursorStren;
+
+				checkBoxGrp -ncb 1 -l "Enable Falloff"
+					-cc ($ctxCmd + " -e -enableFalloff #1 `currentCtx`")
+					shaveCursorEnableFalloff;
+
+				//
+				// Tool-specific controls.
+				//
+				if ($toolName == "Brush")
+				{
+					separator -h 5 -style "none";
+
+					rowColumnLayout -nc 7 -cs 2 5
+						-cw 1 127 -cw 2 35 -cw 3 35 -cw 4 35
+						-cw 5 35 -cw 6 35 -cw 7 35;
+					{
+						text -al "right" -l "Mode"
+							-ann "Brush modes" shaveBrushMode;
+
+						symbolCheckBox -w 35 -h 36 -i "shaveTranslate.xpm"
+							-ann "Translate" -cc shaveBrushTranslateMode
+							shaveBrushTransBox;
+						symbolCheckBox -w 35 -h 36 -i "shaveScale.xpm"
+							-ann "Scale" -cc shaveBrushScaleMode
+							 shaveBrushScaleBox;
+						symbolCheckBox -w 35 -h 36 -i "shaveRotate.xpm"
+							-ann "Rotate about cursor" -cc shaveBrushRotateMode
+							 shaveBrushRotCursorBox;
+						symbolCheckBox -w 35 -h 36 -i "shaveStand.xpm"
+							-ann "Stand hairs on end" -cc shaveBrushStandMode
+							 shaveBrushStandBox;
+						symbolCheckBox -w 35 -h 36 -i "shavePuffRoots.xpm"
+							-ann "Puff hairs out" -cc shaveBrushPuffMode
+							 shaveBrushPuffBox;
+						symbolCheckBox -w 35 -h 36 -i "shaveClump.xpm"
+							-ann "Clump" -cc shaveBrushClumpMode
+							 shaveBrushClumpBox;
+						setParent ..;
+					}
+				}
+
+				setParent ..;
+			}
+
+			setParent ..;
+		}
+
+		setParent ..;
+	}
+
+	setUITemplate -popTemplate;
+}
+

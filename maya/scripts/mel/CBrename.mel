@@ -1,0 +1,204 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+//	Company :	
+//	Procedure Name :	CBrename.mel
+//	Author :	chenbin
+//	Contact :	cgerchen@163.com
+//	Updated :	Sep 23, 2010
+//	Main proc :	CBrename
+//	Function : rename dag nodes
+//	Usage : 
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+global proc CBcopyNames()
+{
+	string $BSstartNames[] = `ls -sl`;
+	for($i = 0; $i < (size($BSstartNames)/2); $i++)
+	{
+		string $BSbuffer[];
+		$CBnumTok = `tokenize $BSstartNames[$i] "|" $BSbuffer`;
+		rename $BSstartNames[$i + (size($BSstartNames)/2)] $BSbuffer[size($BSbuffer) - 1];
+	}
+}
+
+global proc CBkillNs(){
+	namespace -set ":";
+	string $cbAllNses[] = `namespaceInfo -lon`;
+	$cbAllNses = stringArrayRemove({"UI", "shared"}, $cbAllNses);
+	string $cbAllNs;
+	for ($cbAllNs in $cbAllNses){
+		namespace -f -mv $cbAllNs ":";
+		namespace -rm $cbAllNs;
+	}
+}
+	
+global proc CBkillAllNs()
+{
+	string $CBobjectsw[] = `ls -sl`;
+	string $CBobject;
+	for ($CBobject in $CBobjectsw)
+	{
+		string $CBoldNames[] = `listRelatives -ad -f -typ transform $CBobject`;
+		string $CBoldName;
+		for ($CBoldName in $CBoldNames)
+		{
+			string $CBbuffer[];
+			tokenize $CBoldName ":" $CBbuffer;
+			string $CBnewName = $CBbuffer[size($CBbuffer)-1];
+			rename $CBoldName $CBnewName;
+		}
+		string $CBbuffer[];
+		tokenize $CBobject ":" $CBbuffer;
+		string $CBnewName = $CBbuffer[size($CBbuffer)-1];
+		rename $CBobject $CBnewName;
+	}
+	CBkillNs;
+}
+
+global proc CBrenamePostfixSon(string $CBtempletText, int $CBindexValue)
+{
+	string $seles[] = `ls -sl`;
+	int $j = $CBindexValue;	
+	for ($i=0; $i<(size($seles)); $i++)
+	{
+		string $buffer[];
+		tokenize $seles[$i] "|" $buffer;
+		$sele = $buffer[size($buffer)-1];
+		string $CBtemp = `substitute "/i" $CBtempletText $sele`;
+		string $v = $j;
+		string $CBfiname = `substitute "/n" $CBtemp $v`;
+		rename $seles[$i] $CBfiname;
+		$j++;
+		$seles = `ls -sl`;
+	}
+}
+
+global proc CBrenameRelatives()
+{
+	string $seles[] = `ls -sl`;
+	string $sele;
+	for ($sele in $seles)
+	{
+		string $cbBuf[];
+		tokenize $sele "|" $cbBuf;
+		string $cbRelatives[] = `listRelatives -f $sele`;
+		for ($i=0; $i<size($cbRelatives); $i++)
+		{
+			int $j = 1;
+				rename $cbRelatives[$i] ($cbBuf[size($cbBuf)-1] + "_p" + $j);
+			$j++;
+		}
+	}
+}
+
+global proc CBcheckSameNameNode()
+{
+	SelectHierarchy;
+	string $seles[] = `ls -sl -type transform`;
+	string $sele;
+	select -d;
+	for ($sele in $seles)
+	{
+		if (`match "|" $sele` == "|")
+		select -add $sele;
+	}
+}
+
+global proc string[] CBsameNameList(){
+	string $seles[] = `ls -s -type transform`;
+	string $newSeles[] = {};
+	string $sele;
+	select -d;
+	for ($sele in $seles){
+		if (match("|", $sele) == "|"){
+			$newSeles = stringArrayCatenate($newSeles, {$sele});
+		}
+	}
+	return $newSeles;
+}
+
+global proc CBcheckAllSameNameNode()
+{
+	int $cbSeNum = size(CBsameNameList());
+	if ($cbSeNum == 0){
+		print "恭喜！未检测到有重名情况！";
+	}
+	else{
+		print "检测到有如下节点有重名情况：\n";
+		print (CBsameNameList());
+		select -r (CBsameNameList());
+		print "\n我已帮您选择这些重名节点";
+	}
+}
+
+global proc CBrenameHierDagStart()
+{
+	SelectHierarchy;
+	string $seles[] = `ls -sl -type transform`;
+	select -r $seles;
+	string $sele;
+	for ($i=0; $i<size($seles); $i++)
+	{
+		string $buffer[];
+		tokenize $seles[$i] "|" $buffer;
+		$newName = $buffer[size($buffer)-1];
+
+		for (;(`match "_grp" $newName` == "_grp")||(`match "_geo" $newName` == "_geo");)
+		{		
+			$newName = `substitute "_grp" $newName ""`;
+			$newName = `substitute "_geo" $newName ""`;
+		}
+		rename $seles[$i] $newName;
+		$seles = `ls -sl -type transform`;
+	}
+}
+
+global proc CBrenameHierDAG()
+{
+	CBrenameHierDagStart;
+	string $seles[] = `ls -sl -type transform`;
+	CBcheckSameNameNode;
+	string $sameNames[] = `ls -sl -type transform`;
+	CBrenamePostfixSon "/i_mul_/n" 0;
+	string $newSameNames[] = `ls -sl -type transform`;
+	string $finalSeles[] = `stringArrayRemove $sameNames $seles`;
+	$finalSeles = `stringArrayCatenate $finalSeles $newSameNames`;
+
+	for ($i=0; $i<size($finalSeles); $i++)
+	{
+		select -r $finalSeles[$i];
+		if (size(`listRelatives -s $finalSeles[$i]`) == 0)
+		{
+			CBrenamePostfixSon "/i_grp" 0;
+		}
+		else
+		{
+			CBrenamePostfixSon "/i_geo" 0;
+		}
+	}
+}
+
+global proc CBrename()
+{
+	if (`window -q -ex CBrename`)	deleteUI CBrename;
+	if (`windowPref -exists CBrename`) windowPref -r CBrename;
+	string $CBrenameWindow = `window -t "CBrename" -s 1 -wh 320 300 CBrename`;
+	scrollLayout;
+	columnLayout;
+		rowColumnLayout -nc 2 -columnWidth 1 120 -columnWidth 2 250;
+			text -label "   模板:";
+			global string $CBtemplet;
+			$CBtemplet = `textField -tx "/i_/n"`;
+			text -label "   序列起始:";
+			global string $CBindex;
+			$CBindex = `intField -v 1`;
+		setParent ..;
+		text -label "   注：在\"模板\"中输入命名格式，/i为该节点原始名称，";
+		text -l "   /n为序列号位置，index为起始序列号";
+		button -h 25 -w 120 -l "按模板重命名" -c "CBrenamePostfixSon `textField -q -tx $CBtemplet` `intField -q -v $CBindex`";
+		button -h 25 -w 120 -l "重名检测" -c "CBcheckAllSameNameNode" -ann "自动选择有重名现象的节点";
+		button -h 25 -w 120 -l "加geo或grp后缀" -c "CBrenameHierDAG" -ann "在模型的transform节点后加\"_geo\"后缀，在组后加\"_grp\"后缀";
+		button -h 25 -w 120 -l "拷贝节点名" -c "CBcopyNames" -ann "复制选择列表中前一半节点的名字到后一半";
+		button -h 25 -w 120 -l "删除名字空间" -c "CBkillAllNs";
+		button -h 25 -w 120 -l "子级重命名序列" -c "CBrenameRelatives" -ann "所选组的子物体以组名为前缀加序列号";
+	showWindow $CBrenameWindow;
+}
+//CBrename;

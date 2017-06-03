@@ -1,0 +1,1133 @@
+global	string $shaveDiag_fileVersion = "$Revision$";
+
+
+proc addErr(string $err)
+{
+	global string	$shaveDiag_errors[];
+
+	$shaveDiag_errors[size($shaveDiag_errors)] = $err;
+}
+
+
+proc dumpFile(string $file, string $description)
+{
+	if (!`filetest -f $file`)
+	{
+		print(" [Not found]\n");
+		addErr(
+			"There is no " + $description + " file (" + $file + ")."
+		);
+	}
+	else if (!`filetest -r $file`)
+	{
+		print(" [Not readable]\n");
+		addErr(
+			"The " + $description + " file (" + $file
+			+ ") exists but is not readable."
+		);
+	}
+	else if (!`filetest -s $file`)
+	{
+		print(" [Empty]\n");
+		addErr(
+			"The " + $description + " file (" + $file + ") exists but is empty."
+		);
+	}
+	else
+	{
+
+		int	$fid = fopen($file, "r");
+
+		if ($fid == 0)
+		{
+			print(" [Cannot open]\n");
+			addErr(
+				"Could not read " + $description + " file (" + $file
+				+ ") even though it exists and is marked readable."
+			);
+		}
+		else
+		{
+			string	$line;
+
+			print("\n");
+
+			while (($line = fgetline($fid)) != "")
+			{
+				int	$len = size($line);
+
+				//
+				// Strip off trailing EOL chars.
+				//
+				while (($len > 0)
+				&&		((substring($line, $len, $len) == "\n")
+				||		 (substring($line, $len, $len) == "\r")))
+				{
+					if ($len > 1)
+						$line = substring($line, 1, $len-1);
+					else
+						$line = "";
+
+					$len--;
+				}
+
+				print("    '" + $line + "'\n");
+			}
+
+			fclose($fid);
+		}
+	}
+}
+
+
+proc string[] dumpPath(string $pathVar)
+{
+	string	$path = getenv($pathVar);
+	string	$paths[];
+	int		$i;
+
+	print($pathVar + " (raw): '" + $path + "'\n");
+	print($pathVar + " (parsed):\n");
+
+	if (`about -nt`)
+		tokenize($path, ";", $paths);
+	else
+		tokenize($path, ":", $paths);
+
+	int		$numPaths = size($paths);
+	int		$foundPath = false;
+	string	$validPaths[];
+	int		$numValidPaths = 0;
+
+	for ($i = 0; $i < $numPaths; $i++)
+	{
+		//
+		// Make sure that the path actually contains something other than
+		// whitespace.
+		//
+		if (match("[^ \t]", $paths[$i]) != "")
+		{
+			$foundPath = true;
+
+			if (`filetest -d $paths[$i]`)
+			{
+				print("  " + $paths[$i] + "\t[Readable]\n");
+				$validPaths[$numValidPaths++] = $paths[$i];
+			}
+			else
+			{
+				print("  " + $paths[$i] + "\t[Not Readable]\n");
+			}
+		}
+	}
+
+	if (!$foundPath) print("  [Empty]\n");
+
+	return $validPaths;
+}
+
+
+proc int dumpPluginNodes(string $nodeType, string $expectedVersion)
+{
+	string	$nodes[];
+	string	$node;
+	int		$nodeVersion;
+	int		$wrongVersion = false;
+
+	if (`pluginInfo -q -loaded shaveNode`) $nodes = `ls -type $nodeType`;
+
+	if (size($nodes) == 0)
+		print("  [None]\n");
+	else
+	{
+		for ($node in $nodes)
+		{
+			$nodeVersion = getAttr($node + ".nodeVersion");
+			print("  " + $node + " -- node version is " + $nodeVersion + "\n");
+
+			if (($expectedVersion != "") && ($nodeVersion != $expectedVersion))
+				$wrongVersion = true;
+		}
+	}
+
+	if ($wrongVersion)
+	{
+		addErr(
+			"One or more " + $nodeType + " nodes did not have the"
+			+ " correct version (" + $expectedVersion + ")."
+		);
+	}
+
+	return size($nodes);
+}
+
+
+proc string getVersionFromCVSRevisionString(string $revision)
+{
+	string	$version = match("[$]Revision:[^$]*[$]", $revision);
+
+	//
+	// Strip off the dollar signs as they seem to cause Maya's match()
+	// command problems.
+	//
+	$version = match("[^$]+", $version);
+
+	//
+	// Strip off everything to the left of the colon.
+	//
+	$version = match(":.*$", $version);
+
+	//
+	// Get rid of the colon and any whitespace.
+	//
+	$version = match("[^: \t]+", $version);
+
+	return $version;
+}
+
+
+proc string getFileVersion(string $file)
+{
+	int	$fileID = fopen($file, "r");
+
+	if ($fileID == 0) return "[Could not open file for reading]";
+
+	//
+	// The Revision string should be on the very first line of the file.
+	//
+	string	$line = fgetline($fileID);
+
+	fclose($fileID);
+
+	return getVersionFromCVSRevisionString($line);
+}
+
+
+proc int getWinRegKey(string $key, string $result[])
+{
+    clear $result;
+
+    string  $cmd = "reg query \"" + $key + "\"";
+    string  $str = system($cmd);
+
+    //
+    // The result should consist of two lines of header output, followed by
+    // zero or more lines of results.  The lines are separated by CRLFs, so
+    // split them out into an array.
+    //
+    string  $lines[];
+
+    tokenize($str, "\r\n", $lines);
+
+    //
+    // If there are fewer than two lines, then the lookup failed.
+    //
+    if (size($lines) < 2) return false;
+
+    //
+    // If the third line begins with 'Error:' then the lookup failed.
+    //
+    if ((size($lines[2]) > 5) && (substring($lines[2], 1, 6) == "Error:"))
+		return false;
+
+    //
+    // Copy all but the first two lines to the result.
+    //
+    int     $i;
+
+    for ($i = 2; $i < size($lines); $i++)
+        $result[$i-2] = $lines[$i];
+
+    return true;
+}
+
+
+proc int getWinRegValue(string $key, string $value, string $result[])
+{
+    clear $result;
+
+    string  $cmd = "reg query \"" + $key + "\"";
+
+    if ($value == "")
+        $cmd += " /ve";
+    else
+        $cmd += " /v \"" + $value + "\"";
+
+    string  $str = system($cmd);
+
+    //
+    // The result should consist of three lines of output, separated by
+    // CRLFs, so split them out into an array.
+    //
+    string  $lines[];
+
+    tokenize($str, "\r\n", $lines);
+
+    //
+    // If there are not exactly three lines, then the lookup failed.
+    //
+    if (size($lines) != 3) return false;
+
+    //
+    // If the third line begins with 'Error:' then the lookup failed.
+    //
+    if ((size($lines[2]) > 5) && (substring($lines[2], 1, 6) == "Error:"))
+        return false;
+
+    //
+    // The third line should contain three tab-separated fields, so split
+    // them out.
+    //
+    string  $fields[];
+
+    tokenize($lines[2], "\t", $fields);
+
+    //
+    // If there are fewer than 3 fields, the value was empty.
+    //
+    if (size($fields) < 3)
+    {
+        $result[0] = "";
+
+        if (size($fields) == 2)
+            $result[1] = $fields[1];
+        else
+            $result[1] = "";
+
+        return true;
+    }
+
+    //
+    // We return the type of the value in the second array element.
+    //
+    $result[1] = $fields[1];
+
+    //
+    // If there are precisely 3 fields, then the third one contains the
+    // desired result and the second one the type of the result.
+    //
+    if (size($fields) == 3)
+    {
+        $result[0] = $fields[2];
+        return true;
+    }
+
+    //
+    // We have more than 3 fields which means that the result contained
+    // tabs and was treated as multiple fields by 'tokenize'.  So we have to
+    // parse the result out of the original string.
+    //
+    string  $pattern = "^[\t]*" + $fields[0] + "[\t]*" + $fields[1] + "\t";
+    string  $prefix = match($pattern, $lines[2]);
+
+    if ($prefix == "")
+    {
+        //
+        // Oh crap.  The pattern didn't match.  Let's bail.
+        //
+        error("Error looking key '" + $key + "', value '" + $value + "': raw result was '" + $str + "' but we couldn't parse it.\n");
+    }
+
+    if (size($prefix) >= size($lines[2]))
+    {
+        $result[0] = "";
+        return true;
+    }
+
+    $result[0] = substring($lines[2], size($prefix)+1, size($lines[2]));
+
+    return true;
+}
+
+
+proc int[] dumpMayaRegistry(string $aliasName)
+{
+	int		$foundAlias = false;
+	int		$foundInstall = false;
+	int		$foundMayaVersion = false;
+	int		$foundModules = false;
+	string	$key = "HKLM\\Software\\" + $aliasName;
+	string	$mayaVersion = `about -v`;
+	string	$reg[];
+
+   	if (!getWinRegKey($key, $reg))
+		print("  " + $key + "  NOT FOUND\n");
+	else
+	{
+		$foundAlias = true;
+		$key = "HKLM\\Software\\" + $aliasName + "\\Common";
+
+		if (!getWinRegKey($key, $reg))
+           	print("  " + $key + "  NOT FOUND\n");
+		else if (!getWinRegValue($key, "AW_MODULES", $reg))
+			print("  " + $key + "(AW_MODULES)  NOT FOUND\n");
+		else
+		{
+			print("  " + $key + "(AW_MODULES) = '" + $reg[0] + "'\n");
+			$foundModules = true;
+		}
+
+		$key = "HKLM\\Software\\" + $aliasName + "\\Maya";
+
+		if (!getWinRegKey($key, $reg))
+			print("  " + $key + "  NOT FOUND\n");
+		else
+		{
+			$key += "\\" + $mayaVersion;
+
+			if (!getWinRegKey($key, $reg))
+				print("  " + $key + "  NOT FOUND\n");
+			else
+			{
+				$foundMayaVersion = true;
+				$key += "\\Setup";
+
+				if (!getWinRegKey($key, $reg))
+					print("  " + $key + "  NOT FOUND\n");
+				else
+				{
+					$key += "\\InstallPath";
+
+					if (!getWinRegKey($key, $reg))
+						print("  " + $key + "  NOT FOUND\n");
+           			else if (!getWinRegValue($key, "MAYA_INSTALL_LOCATION", $reg))
+						print("  " + $key + "(MAYA_INSTALL_LOCATION)  NOT FOUND\n");
+					else
+					{
+						$foundInstall = true;
+						print("  " + $key + "(MAYA_INSTALL_LOCATION) = '" + $reg[0] + "'\n");
+					}
+				}
+			}
+		}
+	}
+
+	int	$result[];
+
+	$result[0] = $foundAlias;
+	$result[1] = $foundModules;
+	$result[2] = $foundMayaVersion;
+	$result[3] = $foundInstall;
+
+	return $result;
+}
+
+
+proc showFilePaths(string $pathVariable, string $paths[], string $file)
+{
+	int	$i;
+	int	$numPaths = size($paths);
+	int	$numFound = 0;
+
+	print($file + ":");
+
+	for ($i = 0; $i < $numPaths; $i++)
+	{
+		string	$filePath = fromNativePath($paths[$i]);
+		$filePath += "/" + $file;
+
+		if (`filetest -f $filePath`)
+		{
+			print("\n  " + $filePath);
+
+			//	Don't count this as a duplicate if it's just a second
+			//	reference to the exact same file.
+			int	$j;
+
+			for ($j = 0; $j < $i; ++$j)
+				if ($paths[$j] == $paths[$i]) break;
+
+			if ($j == $i) $numFound++;
+		}
+	}
+
+	if ($numFound == 0)
+	{
+		print("[Not found]");
+
+		if ($numPaths == 0)
+			addErr("There are no readable directories in " + $pathVariable + ".");
+		else
+			addErr("There is no '" + $file + "' file in " + $pathVariable + ".");
+	}
+	else if ($numFound > 1)
+	{
+		addErr(
+			"There are " + $numFound + " separate '" + $file + "' files"
+			+ " in " + $pathVariable + "."
+		);
+	}
+
+	print("\n");
+}
+
+
+proc summary()
+{
+	global string	$shaveDiag_errors[];
+
+	print("\nSummary\n");
+	print("=======\n");
+
+	if (size($shaveDiag_errors) == 0)
+		print("No obvious problems were detected.\n");
+	else
+	{
+		print(
+			"The following problems or potential problems were discovered:\n\n"
+		);
+
+		int	$i;
+
+		for ($i = 0; $i < size($shaveDiag_errors); $i++)
+			print(($i+1) + ") " + $shaveDiag_errors[$i] + "\n");
+	}
+
+	if (exists("shaveInfo"))
+		print("\nYour system ID is " + `shaveInfo -systemId` + " (yes, negative numbers are valid)\n");
+}
+
+
+global proc shaveDiag()
+{
+	global string	$shaveDiag_errors[];
+	global string	$shaveDiag_fileVersion;
+
+	clear $shaveDiag_errors;
+
+	int		$i;
+
+//	string	$shaveDiagVersion = getVersionFromCVSRevisionString($shaveDiag_fileVersion);
+//	if ($shaveDiagVersion == "") $shaveDiagVersion = "???";
+//	print("Shave Diagnostics, v" + $shaveDiagVersion + "\n");
+
+	print("Shave Diagnostics\n");	
+	print("====================");
+
+//	for ($i = 0; $i < size($shaveDiagVersion); $i++) print("=");
+
+	print("\n");
+
+	//
+	// Maya Version
+	//
+    string  $mayaVersion = `about -v`;
+
+	print("Maya version: " + $mayaVersion + "  Cut: " + `about -c` + "\n\n");
+
+	int		$mayaMajor = 0;
+	int		$mayaMinor = 0;
+	string	$temp[];
+
+	tokenize($mayaVersion, ".", $temp);
+
+	if (size($temp) == 0)
+	{
+		addErr("Maya version '" + $mayaVersion + "' is invalid");
+	}
+	else
+	{
+		$mayaMajor = $temp[0];
+
+		if (size($temp) > 1) $mayaMinor = $temp[1];
+	}
+
+	//
+	// Current Directory
+	//
+	string	$cwd = pwd();
+
+	print("Current Working Directory: '" + $cwd + "'\n\n");
+
+    //
+    // Registry (Windows only)
+    //
+    if (`about -win`)
+    {
+        print("Registry:\n");
+
+		int	$result1[] = dumpMayaRegistry("Alias|Wavefront");
+		int	$result2[] = dumpMayaRegistry("Alias");
+        print("\n");
+
+		if (!$result1[0] && !$result2[0])
+		{
+			addErr(
+				"Could not find registry entry for 'Alias' or"
+				+ " 'Alias|Wavefront'.  Was Maya properly installed?"
+			);
+		}
+		else
+		{
+			if (!$result1[1] && !$result2[1])
+			{
+				addErr(
+					"Could not find registry entry for 'AW_MODULES'."
+					+ " Was Maya properly installed?"
+				);
+			}
+
+			if (!$result1[2] && !$result2[2])
+			{
+				addErr(
+					"Could not find registry entry for this Maya version."
+					+ " Was Maya properly installed?"
+				);
+			}
+			else if (!$result1[3] && !$result2[3])
+			{
+				addErr(
+					"Could not find registry entry for 'MAYA_INSTALL_LOCATION'."
+					+ " Was Maya properly installed?"
+				);
+			}
+		}
+    }
+
+	//
+	// System PATH
+	//
+	string	$systemPaths[] = dumpPath("PATH");
+	int		$numSystemPaths = size($systemPaths);
+
+	print("\n");
+
+	//
+	// libShave.dll (Windows only)
+	//
+	if (`about -win`)
+	{
+		showFilePaths("PATH", $systemPaths, "libShave.dll");
+		print("\n");
+	}
+
+	//
+	// LD_LIBRARY_PATH (Linux only)
+	//
+	if (`about -linux`)
+	{
+		string	$libPaths[] = dumpPath("LD_LIBRARY_PATH");
+		int		$numLibPaths = size($libPaths);
+
+		print("\n");
+
+		//
+		// libShave.so
+		//
+		showFilePaths("LD_LIBRARY_PATH", $libPaths, "libShave.so");
+
+		print("\n");
+	}
+
+	//
+	// MAYA_LOCATION
+	//
+	string	$mayaLocationPaths[] = dumpPath("MAYA_LOCATION");
+	int		$numMayaLocationPaths = size($mayaLocationPaths);
+
+	if ($numMayaLocationPaths == 0) {
+		addErr("MAYA_LOCATION is either undefined or points to an unreadable directory.");
+	} else if ($numMayaLocationPaths > 1) {
+		addErr("MAYA_LOCATION contains multiple paths.");
+	} else {
+		//
+		// libShave.dylib (OSX only)
+		//
+		string	$libPath[] = { ($mayaLocationPaths[0] + "/MacOS") };
+		if (`about -mac`) {
+			showFilePaths("MAYA_LOCATION/MacOS", $libPath, "libShave.dylib");
+			print("\n");
+		}
+	}
+
+	//
+	// MAYA_MODULE_PATH
+	//
+	if (`about -mac`)
+		print("Shave module file: Not used on OSX\n");
+	else
+	{
+		string	$modulePaths[] = dumpPath("MAYA_MODULE_PATH");
+		int		$numModulePaths = size($modulePaths);
+		int		$numFound = 0;
+
+		//
+		// Module File
+		//
+		print("\nShave module file: ");
+
+		for ($i = 0; $i < $numModulePaths; $i++)
+		{
+			string	$filePath = fromNativePath($modulePaths[$i]);
+			$filePath += "/shaveHaircut.mod";
+
+			if (`filetest -f $filePath`)
+			{
+				print($filePath + " ");
+
+				dumpFile($filePath, "module");
+
+				$numFound++;
+			}
+		}
+
+		if ($numFound == 0)
+		{
+			print("[Not found]\n\n");
+
+			if ($numModulePaths == 0)
+				addErr("There are no readable directories in MAYA_MODULE_PATH.");
+			else
+			{
+				addErr(
+					"There is no module file (shaveHaircut.mod) in"
+					+ " MAYA_MODULE_PATH."
+				);
+			}
+		}
+		else if ($numFound > 1)
+		{
+			addErr(
+				"There are " + $numFound + " separate module files"
+				+ " (shaveHaircut.mod) in MAYA_MODULE_PATH."
+			);
+		}
+
+		print("\n");
+	}
+
+	//
+	// MAYA_SCRIPT_PATH
+	//
+	string	$scriptPaths[] = dumpPath("MAYA_SCRIPT_PATH");
+	int		$numScriptPaths = size($scriptPaths);
+
+	print("\n");
+
+	//
+	// Script Files
+	//
+	if ($numScriptPaths > 0)
+	{
+		print("Script files:\n");
+
+		string	$scriptFiles[] = {
+			"AEshaveGlobalsTemplate.mel",
+			"AEshaveHairTemplate.mel",
+			"shaveAEOverrides.mel",
+			"shaveBrush.mel",
+			"shaveBrushProperties.mel",
+			"shaveBrushSetModeButton.mel",
+			"shaveBrushValues.mel",
+			"shaveCursorCtxCommonProperties.mel",
+			"shaveCursorCtxCommonValues.mel",
+			"shaveCutProperties.mel",
+			"shaveCutValues.mel",
+			"shaveDiag.mel",
+			"shavePresetWin.mel",
+			"shaveRelationshipEditor.mel",
+			"shaveRenderman.mel",
+			"shaveRunTimeCommands.mel",
+			"shaveShelf.mel",
+			"shaveUI.mel",
+			"shaveVersion.mel"
+		};
+
+		int	$numScriptFiles = size($scriptFiles);
+		int	$p;
+
+		for ($i = 0; $i < $numScriptFiles; $i++)
+		{
+			$numFound = 0;
+
+			for ($p = 0; $p < $numScriptPaths; $p++)
+			{
+				string	$filePath = fromNativePath($scriptPaths[$p]);
+				$filePath += "/" + $scriptFiles[$i];
+
+				if (`filetest -f $filePath`)
+				{
+					//
+					// If this is Maya's version of setFilterScript.mel,
+					// then ignore it.
+					//
+					if (size(match("/scripts/startup/setFilterScript.mel", $filePath)) > 0) continue;
+
+					$numFound++;
+
+					//print("  " + $filePath + " (version ");
+					//string	$version = getFileVersion($filePath);
+					//if ($version == "")
+					//	print("?)\n");
+					//else
+					//	print($version + ")\n");
+					
+					print("  " + $filePath + "\n");
+
+				}
+			}
+
+			if ($numFound == 0)
+			{
+				if ($scriptFiles[$i] != "setFilterScript.mel")
+				{
+					print("  [None found]\n");
+
+					addErr(
+						"Script file '" + $scriptFiles[$i]
+						+ "' was not found anywhere in MAYA_SCRIPT_PATH."
+					);
+				}
+			}
+			else if ($numFound > 1)
+			{
+				addErr(
+					$numFound + " separate copies of '"
+					+ $scriptFiles[$i] + " were found in MAYA_SCRIPT_PATH."
+				);
+			}
+		}
+
+		print("\n");
+	}
+	else
+	{
+		addErr("There are no readable directories in MAYA_SCRIPT_PATH.");
+	}
+
+	//
+	// MAYA_PLUG_IN_PATH
+	//
+	string	$pluginPaths[] = dumpPath("MAYA_PLUG_IN_PATH");
+	int		$numPluginPaths = size($pluginPaths);
+
+	if ($numPluginPaths == 0)
+		addErr("There are no readable directories in MAYA_PLUG_IN_PATH.");
+
+	print("\n");
+
+	//
+	// Shave Plugin
+	//
+	string	$plugin = "";
+
+	if (`about -linux`)
+		$plugin = "shaveNode.so";
+	else if (`about -mac`)
+	{
+		if (`about -version` == "7.0")
+			$plugin = "shaveNode.lib";
+		else
+			$plugin = "shaveNode.bundle";
+	}
+	else if (`about -win` || `about -nt`)
+		$plugin = "shaveNode.mll";
+
+	if ($plugin != "")
+	{
+		print("Main plugin file (" + $plugin + "):\n");
+
+		$numFound = 0;
+
+		for ($i = 0; $i < $numPluginPaths; $i++)
+		{
+			if (`filetest -f ($pluginPaths[$i] + "/" + $plugin)`)
+			{
+				$numFound++;
+
+				print("  " + $pluginPaths[$i] + "/" + $plugin + "\n");
+
+				if (!`filetest -r ($pluginPaths[$i] + "/" + $plugin)`)
+				{
+					addErr(
+						"The main Shave plugin file (" + $pluginPaths[$i]
+						+ "/" + $plugin + ") exists but is not readable."
+					);
+				}
+			}
+		}
+
+		if ($numFound == 0)
+		{
+			addErr(
+				"The main Shave plugin file (" + $plugin
+				+ ") was not found in MAYA_PLUG_IN_PATH."
+			);
+		}
+		else if ($numFound > 1)
+		{
+			addErr(
+				$numFound + " different copies of the main Shave plugin file ("
+				+ $plugin + ") were found in MAYA_PLUG_IN_PATH."
+			);
+		}
+
+		//
+		// On Linux Maya cannot find the plugin if there is a copy of it in
+		// the current directory.
+		//
+		if (`about -linux` && `filetest -r ($cwd + "/shaveNode.so")`)
+		{
+			addErr(
+				"There is a copy of shaveNode.so in the current directory"
+				+ " (" + $cwd + ")."
+			);
+		}
+
+		print("\n");
+	}
+
+	//
+	// Loaded Plugins
+	//
+	print("Plugins currently loaded:\n");
+
+	string	$plugins[] = `pluginInfo -q -listPlugins`;
+	int		$numPlugins = size($plugins);
+
+	if ($numPlugins == 0)
+		print("  [None]\n");
+	else
+	{
+		for ($i = 0; $i < $numPlugins; $i++)
+		{
+			print("  " + $plugins[$i]);
+
+			if (`pluginInfo -q -autoload $plugins[$i]`) print(" [autoload]");
+
+			print("\n");
+		}
+	}
+
+	print("\n");
+
+	//
+	//	Operating System
+	//
+	if (($mayaMajor > 4) || (($mayaMajor == 4) && ($mayaMinor == 5)))
+		print("Operating System: " + `about -osv` + "\n");
+	else
+		print("Operating System: " + `about -os` + "\n");
+
+	print("\n");
+
+	//
+	//	System ID
+	//
+	if (exists("shaveInfo"))
+		print("System ID: " + `shaveInfo -systemId` + "\n");
+	else
+		print("System ID: <not available>\n");
+
+	print("\n");
+
+	//
+	// Key File
+	//
+	string	$keyPath = "";
+
+	if (`about -linux`)
+		$keyPath = "/usr/local/shave/key.txt";
+	else if (`about -mac`)
+		$keyPath = "/Users/Shared/Shave/key.txt";
+	else if (`about -win` || `about -nt`)
+		$keyPath = "c:/key.txt";
+
+	print("Key File: ");
+
+	if ($keyPath == "")
+	{
+		print(" [Not found]\n");
+		addErr(
+			"Operating system is '" + `about -os`
+			+ "' which is not supported by Shave."
+		);
+	}
+	else
+		dumpFile($keyPath, "key");
+
+	//
+	// Shave Version (from scripts)
+	//
+	string	$version = "[Not available]";
+
+	if (exists("shaveVersion")) $version = shaveVersion();
+
+	print("\nShave version, according to scripts: " + $version + "\n");
+
+	//
+	// Load Plugin
+	//
+	int	$pluginLoaded = `pluginInfo -q -loaded shaveNode`;
+
+	if (!$pluginLoaded)
+	{
+		//
+		// We used to try loading the plugin ourselves, but if there was a
+		// problem with Shave crashing Maya then the user would never get a
+		// chance to copy the shaveDiag output.  So now we simply ask
+		// the user to rerun with the plugin loaded.
+		//
+		addErr("Shave plugin is not loaded.  Try loading the plugin then rerunning shaveDiag.");
+		summary();
+	}
+	else
+	{
+		//
+		// We may have just loaded the Shave plugin, in which case any
+		// plugin commands we use will not yet be valid.  So we must defer
+		// the remainder of the diagnostics until the load has a chance to
+		// complete.
+		//
+		evalDeferred("shaveDiag_post");
+	}
+}
+
+
+global proc shaveDiag_post()
+{
+	//
+	// Shave Version (from plugin)
+	//
+	string	$version = "[Not available]";
+
+	if (exists("shaveInfo"))
+	{
+		$version = eval("shaveInfo -v");
+
+		if (exists("shaveVersion"))
+		{
+			string $versionFromScript = shaveVersion();
+
+			if ($versionFromScript != $version)
+			{
+				addErr(
+					"Shave version from script file (" + $versionFromScript
+					+ ") does not match that from plugin (" + $version + ")."
+				);
+			}
+		}
+	}
+
+	print("Shave version, according to plugin:  " + $version + "\n\n");
+
+	string	$sceneName = `file -q -sceneName`;
+
+	if ($sceneName == "") $sceneName = "untitled";
+
+	print("Current scene: '" + $sceneName + "'\n\n");
+
+	if (exists("shaveInfo"))
+		$version = eval("shaveInfo -shv");
+	else
+		$version = "";
+
+	print("Scene contains the following shaveHair nodes:\n");
+	int	$numShaveNodes = dumpPluginNodes("shaveHair", $version);
+
+	print("shaveInfo says current shaveHair version should be ");
+
+	if ($version != "")
+		print($version + "\n");
+	else
+		print("[Not available]\n");
+
+	if (exists("shaveInfo"))
+		$version = eval("shaveInfo -gv");
+	else
+		$version = "";
+
+	print("\nScene contains the following shaveGlobals nodes:\n");
+	int	$numShaveGlobals = dumpPluginNodes("shaveGlobals", $version);
+
+	print("shaveInfo says current shaveGlobals version should be ");
+
+	if ($version != "")
+		print($version + "\n");
+	else
+		print("[Not available]\n");
+
+	if ($numShaveGlobals > 1)
+	{
+		addErr(
+			"Scene contains " + $numShaveGlobals
+			+ " different shaveGlobals nodes."
+		);
+	}
+	else if (($numShaveGlobals == 0) && ($numShaveNodes > 0))
+	{
+		addErr("Scene contains shaveHair nodes but no shaveGlobals node.");
+	}
+
+	print("\n");
+
+	int	$missingShaveUIAlreadyNoted = false;
+
+	if (exists("shaveGetTempDir"))
+	{
+		string	$dir = shaveGetTempDir();
+
+		print("Directory for Shave GUI temp files: '" + $dir + "' ");
+
+		if (($dir == "") || !`filetest -w $dir`)
+		{
+			print("[Not writable]\n");
+
+			addErr(
+			  "Path to temp files for Shave GUI is not writable. " +
+			  "GUI may not work."
+			);
+		}
+		else
+			print("[Writable]\n");
+
+		//
+		// If the 'shaveHairFile.hair' file already exists in the temp dir,
+		// make sure that we can write to it.
+		//
+		string	$hairFile = $dir + "/shaveHairFile.hair";
+
+		if (`filetest -f $hairFile` && !`filetest -w $hairFile`)
+		{
+			addErr(
+				"Shave GUI temp file '" + $hairFile
+				+ "' already exists and cannot be overwritten."
+			);
+		}
+	}
+	else
+	{
+		print("Cannot find shaveGetTempDir() procedure.\n");
+		addErr("shaveUI.mel is either missing or is a very old version.");
+		$missingShaveUIAlreadyNoted = true;
+	}
+
+	if (exists("shaveGetStatDir"))
+	{
+		string	$dir = shaveGetStatDir();
+
+		print("Directory for Shave stat files '" + $dir + "' ");
+
+		if (($dir == "") || !`filetest -w $dir`)
+		{
+			print("[Not writable]\n");
+			addErr("Path to stat files for Shave dynamics is not writable.");
+		}
+		else if (!`filetest -r $dir`)
+		{
+			print("[Not readable]\n");
+			addErr("Path to stat files for Shave dynamics is not readable.");
+		}
+		else
+			print("[Writable]\n");
+	}
+	else
+	{
+		print("Cannot find shaveGetStatDir() procedure.\n");
+
+		if (!$missingShaveUIAlreadyNoted)
+			addErr("shaveUI.mel is either missing or is a very old version.");
+	}
+
+	summary();
+}

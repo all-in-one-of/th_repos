@@ -1,0 +1,6 @@
+import sys,os
+sys.path.append('ZZK_ProjectCommonscriptmayaTH_PiplineToolpython')
+from nodeRename import 
+import nodeRename as nr
+reload(nr)
+nr.nodeRename().UI()

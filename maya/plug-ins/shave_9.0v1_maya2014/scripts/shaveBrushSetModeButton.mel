@@ -1,0 +1,53 @@
+global string $shaveBrushSetModeButtons_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2006
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com).
+//
+
+global proc shaveBrushSetModeButton(int $mode)
+{
+	//
+	// If one of the symbol boxes exist, assume that they all do.
+	//
+	if (`symbolCheckBox -exists shaveBrushTransBox`)
+	{
+		symbolCheckBox -e -v false shaveBrushTransBox;
+		symbolCheckBox -e -v false shaveBrushScaleBox;
+		symbolCheckBox -e -v false shaveBrushRotCursorBox;
+		symbolCheckBox -e -v false shaveBrushStandBox;
+		symbolCheckBox -e -v false shaveBrushPuffBox;
+		symbolCheckBox -e -v false shaveBrushClumpBox;
+
+		switch ($mode)
+		{
+			case 0:
+				symbolCheckBox -e -v true shaveBrushTransBox;
+			break;
+
+			case 1:
+				symbolCheckBox -e -v true shaveBrushScaleBox;
+			break;
+
+			case 2:
+				symbolCheckBox -e -v true shaveBrushRotCursorBox;
+			break;
+
+			case 3:
+				symbolCheckBox -e -v true shaveBrushStandBox;
+			break;
+
+			case 4:
+				symbolCheckBox -e -v true shaveBrushPuffBox;
+			break;
+
+			case 5:
+				symbolCheckBox -e -v true shaveBrushClumpBox;
+			break;
+		}
+	}
+}

@@ -1,0 +1,6 @@
+global string $shaveVersion_fileVersion = "$Revision$";
+
+global proc string shaveVersion()
+{
+	 return "9.0v01";
+}

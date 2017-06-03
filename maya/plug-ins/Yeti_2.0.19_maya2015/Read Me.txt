@@ -1,0 +1,18 @@
+1. Place the needed Yeti version (folder) into C:\
+
+	(e.g. C:\Yeti-v2.0.19_Maya2015-windows64)
+
+
+2. Put yeti.lic to C:\rlm
+
+
+3. Create (or edit, if needed) a Windows User Environment Variable:
+
+	peregrinel_LICENSE = C:\rlm\yeti.lic
+
+
+If you really like it and use it in production, be sure to support the devs and buy it.
+
+N-joy.
+
+CGh

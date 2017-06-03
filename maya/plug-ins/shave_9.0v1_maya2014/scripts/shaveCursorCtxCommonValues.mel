@@ -1,0 +1,53 @@
+global string $shaveCursorCtxCommonValues_fileVersion = "$Revision$";
+
+//
+// Copyright Joe Alter, Inc., 2006
+//
+// This work may not be duplicated, in whole or part, without the express
+// written permission of Joe Alter, Inc.
+//
+// Created by Gooroos Software (http://www.gooroos.com, info@gooroos.com).
+//
+
+//
+// This is a common values script for all shaveCursorCtx-based tools.
+//
+global proc shaveCursorCtxCommonValues(string $toolName)
+{
+	toolPropertySetCommon($toolName, "", "");
+	shaveCursorCtx_updateCommonPropertySheet();
+	toolPropertySelect shaveCursor;
+}
+
+
+global proc shaveCursorCtx_updateCommonPropertySheet()
+{
+	string	$parent = (`toolPropertyWindow -q -location` + "|shaveCursor");
+
+	if (`layout -q -exists $parent`)
+	{
+		setParent $parent;
+
+		string	$ctx = `currentCtx`;
+		string	$class = `contextInfo -q -c $ctx`;
+		string	$ctxCmd = $class + "Ctx";
+
+		if (`floatSliderGrp -exists shaveCursorSize`)
+		{
+			float	$size = eval($ctxCmd + " -q -brushSize " + $ctx);
+			floatSliderGrp -e -v $size shaveCursorSize;
+		}
+
+		if (`floatSliderGrp -exists shaveCursorStren`)
+		{
+			float	$s = eval($ctxCmd + " -q -brushStren " + $ctx);
+			floatSliderGrp -e -v $s shaveCursorStren;
+		}
+
+		if (`checkBoxGrp -exists shaveCursorEnableFalloff`)
+		{
+			int	$enable = eval($ctxCmd + " -q -enableFalloff " + $ctx);
+			checkBoxGrp -e -v1 $enable shaveCursorEnableFalloff;
+		}
+	}
+}

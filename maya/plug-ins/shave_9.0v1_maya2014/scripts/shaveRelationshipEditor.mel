@@ -1,0 +1,1618 @@
+global string $shaveRelationshipEditor_fileVersion = "$Revision$";
+
+
+// Description:
+//
+//		Implementation of the shaverelationship editor. The shave
+//		relationship editor is a generic editor that can be reconfigured to
+//		perform a variety of tasks which make relationships between
+//		entities.
+//
+// Based heavily on the RelationshipEditor.mel by AliasWavefront
+
+
+if (!`scriptedPanelType -exists shaverelationshipPanel`) 
+{
+	scriptedPanelType
+		-createCallback		"createShaveRelationshipPanel" 
+		-initCallback		"initShaveRelationshipPanel"
+		-addCallback		"addShaveRelationshipPanel"
+		-removeCallback		"removeShaveRelationshipPanel"
+		-saveStateCallback	"saveStateShaveRelationshipPanel"
+		-deleteCallback		"deleteShaveRelationshipPanel"
+		shaverelationshipPanel;
+
+}
+
+/*
+if (!`scriptedPanelType -exists shaverelationshipPanel`) 
+{
+	$panel = "shaverelationshipPanel";
+	$idx = 1;
+	while(`selectionConnection -exists ( $panel + $idx +"LeftMainList")`)
+	{
+		$idx = $idx+1;
+	}
+	$panel = $panel + $idx;
+	if(!`scriptedPanelType -exists ($panel)`)
+	{
+	scriptedPanelType
+		-createCallback		"createShaveRelationshipPanel" 
+		-initCallback		"initShaveRelationshipPanel"
+		-addCallback		"addShaveRelationshipPanel"
+		-removeCallback		"removeShaveRelationshipPanel"
+		-saveStateCallback	"saveStateShaveRelationshipPanel"
+		-deleteCallback		"deleteShaveRelationshipPanel"
+		$panel;
+	}
+
+}
+*/
+//**********************************************************************
+//
+// Local utility procedures.
+//
+//**********************************************************************
+
+
+//
+// Return the index number from a string which ends with an array element
+// reference.
+//
+proc int getIndex(string $str)
+{
+	return int(substitute("].*$", substitute("^.*[[]", $str, ""), "")); 
+}
+
+
+//
+// Return the index of an unused element of the given array attribute.
+//
+// Note that this will not necessarily return *first* unused element.
+//
+proc int getAvailableIndex(string $arrayAttr)
+{
+	string	$parts[];
+	tokenize($arrayAttr, ".", $parts);
+
+	string	$inUse[] = `listAttr -multi -string $parts[size($parts)-1]
+				$arrayAttr`;
+
+	if (size($inUse) == 0) return 0;
+
+	return (getIndex($inUse[size($inUse)-1]) + 1);
+}
+
+
+//
+// Given the name of a UV set, return an array of textures it is driving,
+// as well as the index into the shaveNode's "hairUVSetAssignments" attribute.
+//
+// If no mapping is found for the UV set, $textures will be returned empty
+// and the proc will return an index of -1.
+//
+proc int getUVSetTextures(string $uvSetPlug, string $textures[])
+{
+	string	$shaveNode = shave_getCurrentNode();
+	string	$elementsInUse[];
+	string	$element;
+	string	$tmp[];
+
+	$elementsInUse = `listAttr -multi -string "hairUVSetAssignments"
+				($shaveNode + ".hairUVSetAssignments")`;
+
+	clear($textures);
+
+	//
+	// Step through each of the shaveNode's uv set mappings, looking for
+	// the one whose hairUVSetName attr is connected to $uvSetPlug.
+	//
+	for ($element in $elementsInUse)
+	{
+		$tmp = `listConnections -p on -s yes -d no
+					($shaveNode + "." + $element + ".hairUVSetName")`;
+
+		if ((size($tmp) > 0) && ($tmp[0] == $uvSetPlug))
+		{
+			$textures = `listConnections -s yes -d no
+					($shaveNode + "." + $element + ".hairUVSetTextures")`;
+
+			if (size($textures) == 0) break;
+
+			return getIndex($element);
+		}
+	}
+
+	return -1;
+}
+
+
+proc addUVSetTextures(string $uvSetPlug, string $texturesToAdd[])
+{
+	if (($uvSetPlug != "") && (size($texturesToAdd) > 0))
+	{
+		string	$existingTextures[];
+		int		$uvSetIndex = getUVSetTextures($uvSetPlug, $existingTextures);
+
+		$texturesToAdd = stringArrayRemove($existingTextures, $texturesToAdd);
+
+		if (size($texturesToAdd) > 0)
+		{
+			string	$shaveNode = shave_getCurrentNode();
+			string	$attr = $shaveNode + ".hairUVSetAssignments";
+
+			//
+			// If this UV set doesn't already have an entry, then find an
+			// empty one for it and connect the set name plug.
+			//
+			if ($uvSetIndex == -1)
+			{
+				$uvSetIndex = getAvailableIndex($attr);
+				connectAttr $uvSetPlug
+					($attr+ "[" + $uvSetIndex + "].hairUVSetName");
+			}
+
+			string	$texture;
+
+			$attr += "[" + $uvSetIndex + "]";
+
+			for ($texture in $texturesToAdd)
+			{
+				//
+				// For some reason '-nextAvailable' isn't working on the
+				// 'hairUVSetTextures' attr, even though it's marked as index
+				// not mattering.  I haven't the energy to debug it
+				// tonight, so I'll just do it the brute-force way.
+				//
+				int	$textureIndex = getAvailableIndex($attr + ".hairUVSetTextures");
+
+				connectAttr
+					($texture + ".message")
+					($attr + ".hairUVSetTextures[" + $textureIndex + "]");
+			}
+		}
+	}
+}
+
+
+proc removeUVSetTextures(string $uvSetPlug, string $texturesToRemove[])
+{
+	if (($uvSetPlug != "") && (size($texturesToRemove) > 0))
+	{
+		//
+		// Get the index of the UV set plug.
+		//
+		string	$existingTextures[];
+		int		$uvSetIndex = getUVSetTextures($uvSetPlug, $existingTextures);
+
+		//
+		// Get all the plugs for the textures to which this UV set is
+		// assigned.
+		//
+		string	$shaveNode = shave_getCurrentNode();
+		string	$uvSetEntry;
+		$uvSetEntry = $shaveNode + ".hairUVSetAssignments[" + $uvSetIndex + "]";
+
+		string	$inUse[] = `listAttr -multi -string "hairUVSetTextures"
+								($uvSetEntry + ".hairUVSetTextures")`;
+
+		if (($uvSetIndex >= 0) && (size($existingTextures) > 0))
+		{
+			string	$tmp[];
+			string	$texture;
+
+			//
+			// Step through each texture plug.  If its texture matches one
+			// of those which we are removing, then remove that element
+			// from the array.
+			//
+			int	$numRemoved = 0;
+
+			for ($texturePlug in $inUse)
+			{
+				$tmp = `listConnections -s yes -d no
+							($shaveNode + "." + $texturePlug)`;
+
+				if (size($tmp) > 0)
+				{
+					for ($texture in $texturesToRemove)
+					{
+						if ($tmp[0] == $texture)
+						{
+							removeMultiInstance -break yes
+								($shaveNode + "." + $texturePlug);
+							$numRemoved++;
+							break;
+						}
+					}
+				}
+			}
+
+			//
+			// If we removed all of the UV set's textures, then remove the
+			// entire entry for the UV set.
+			//
+			if ($numRemoved == size($existingTextures))
+			{
+				removeMultiInstance -break yes $uvSetEntry;
+			}
+		}
+	}
+}
+
+
+proc selectshaveRelatedItems(string $panel, string $uvSet)
+{
+	if ($uvSet != "")
+	{
+		waitCursor -state on;
+
+		//
+		// We'll be fiddling with the selections in the right-side outliner
+		// and we don't want to trigger any callbacks, so disable them.
+		//
+		string $otherSelection = ($panel + "RightSelection");
+		string $otherAddScript;
+		string $otherRemoveScript;
+
+		$otherAddScript = 
+			`selectionConnection -query -addScript $otherSelection`;
+		$otherRemoveScript = 
+			`selectionConnection -query -removeScript $otherSelection`;
+
+		selectionConnection 
+			-edit 
+			-addScript "" 
+			-removeScript "" 
+			$otherSelection;
+
+		//
+		// Clear the right-side selection list.
+		//
+		selectionConnection 
+			-edit
+			-clear
+			$otherSelection;
+
+		//
+		// Get the textures which are driven by this uv set.
+		//
+		string	$textures[];
+
+		getUVSetTextures($uvSet, $textures);
+
+		//
+		// Select all the textures.
+		//
+		string	$texture;
+
+		for ($texture in $textures)
+		{
+			selectionConnection
+				-edit
+				-select $texture
+				$otherSelection;
+		}
+
+		waitCursor -state off;
+
+		//
+		// Re-enable the right-side selection list's callbacks.
+		//
+		selectionConnection 
+			-edit 
+			-addScript $otherAddScript 
+			-removeScript $otherRemoveScript 
+			$otherSelection;
+	}
+}
+	
+
+//
+// Return an array containing only those elements of $before which are UV
+// sets.
+//
+proc string[] onlyUVSets(string $before[])
+{
+	string	$after[];
+	string	$item;
+
+	for ($item in $before)
+	{
+		//
+		// The editor contains both meshes and their uv sets, but we only
+		// allow uv sets to be selected as keys.
+		//
+		// uv sets show up in the $before list as 'hairUVSetName' attributes.
+		// So if this key ends in ".hairUVSetName" we'll keep it, otherwise
+		// not.
+		//
+		if (match("[.]uvSetName$", $item) != "")
+			$after[size($after)] = $item;
+	}
+
+	return $after;
+}
+
+
+//
+// Return an array containing only those elements of $before which are
+// textures.
+//
+proc string[] onlyTextures(string $before[])
+{
+	string	$after[];
+	string	$item;
+
+	for ($item in $before)
+	{
+		//
+		// It's possible for the user to manually turn on attribute display
+		// in right-side outliner, so if there's a period in the item name,
+		// toss it.
+		//
+		if (match("[.]", $item) == "") $after[size($after)] = $item;
+	}
+
+	return $after;
+}
+
+
+global proc shaverelationshipEditorSelectKey(string $panel, string $dummy[])
+{
+	string $thisSelection = ($panel + "LeftSelection");
+	string $otherSelection = ($panel + "RightSelection");
+	string $uvSets[] = onlyUVSets(
+						`selectionConnection -query -object $thisSelection`
+					);
+
+	//
+	// Clear the left and right selections.
+	//
+	selectionConnection 
+		-edit
+		-addScript ""
+		-removeScript ""
+		$thisSelection;
+
+	selectionConnection
+		-edit
+		-clear
+		$thisSelection;
+
+	selectionConnection
+		-edit
+		-addScript ""
+		-removeScript ""
+		$otherSelection;
+
+	selectionConnection
+		-edit
+		-clear
+		$otherSelection;
+
+	if (size($uvSets) > 0)
+	{
+		//
+		// We don't allow multiple selection in the left-side outliner, so
+		// there should only be one uvSet.
+		//
+		selectionConnection
+			-edit
+			-select $uvSets[0]
+			$thisSelection;
+
+		selectshaveRelatedItems($panel, $uvSets[0]);
+
+		selectionConnection
+			-edit
+			-addScript
+				("shaverelationshipEditorMakeShaveRelationship " + $panel)
+			-removeScript
+				("shaverelationshipEditorBreakShaveRelationship " + $panel)
+			$otherSelection;
+	}
+	else
+	{
+		//
+		// There is no UV set selected, so don't allow any textures to be
+		// selected either.
+		//
+		selectionConnection
+			-edit
+			-addScript ("shaverelationshipEditorDisallowSelectItem " + $panel)
+			$otherSelection;
+	}
+
+	selectionConnection 
+		-edit
+		-addScript		("shaverelationshipEditorSelectKey " + $panel)
+		-removeScript	("shaverelationshipEditorDeselectKey " + $panel)
+		$thisSelection;
+}
+
+
+global proc shaverelationshipEditorDeselectKey(string $panel, string $dummy[])
+{
+	string $thisSelection = ($panel + "LeftSelection");
+	string $otherSelection = ($panel + "RightSelection");
+	string $uvSets[] = `selectionConnection -query -object $thisSelection`;
+
+	if (size($uvSets) == 0)
+	{
+		selectionConnection
+			-edit
+			-addScript ""
+			-removeScript ""
+			$otherSelection;
+
+		selectionConnection
+			-edit
+			-clear
+			$otherSelection;
+
+		selectionConnection
+			-edit
+			-addScript ("shaverelationshipEditorDisallowSelectItem " + $panel)
+			$otherSelection;
+	}
+}
+
+
+global proc shaverelationshipEditorDisallowSelectItem(
+	string $panel,
+	string $items[])
+{
+	selectionConnection
+		-edit
+		-clear
+		($panel + "RightSelection");
+}
+
+
+global proc shaverelationshipEditorMakeShaveRelationship(
+	string $panel,
+	string $unvalidatedItems[])
+{
+	string	$leftSelection = ($panel + "LeftSelection");
+	string	$uvSetPlugs[] = `selectionConnection -query -object $leftSelection`;
+	string	$texturesToAdd[] = onlyTextures($unvalidatedItems);
+	int		$numTexturesToAdd = size($texturesToAdd);
+
+	if ((size($uvSetPlugs) > 0) && ($numTexturesToAdd > 0))
+	{
+		waitCursor -state on;
+
+		//
+		// Note that because we don't allow multiple selections in the
+		// left outliner, $uvSetPlugs will only contain a single element.
+		//
+		string	$uvSetPlug = $uvSetPlugs[0];
+
+		addUVSetTextures($uvSetPlug, $texturesToAdd);
+
+		//
+		// What is this UV set's parent object?
+		//
+		string	$parts[];
+
+		tokenize($uvSetPlug, ".", $parts);
+
+		string	$parent = $parts[0];
+
+		//
+		// Only one uvSet from a given parent mesh can be assigned to a
+		// texture.  So we must find all of $uvSet's siblings and remove
+		// $texturesToAdd from them.
+		//
+		string	$shaveNode = shave_getCurrentNode();
+		string	$uvSetEntries[];
+		string	$uvSetEntry;
+
+		$uvSetEntries = `listAttr -multi -string "hairUVSetName"
+					($shaveNode + ".hairUVSetAssignments")`;
+
+		for ($uvSetEntry in $uvSetEntries)
+		{
+			//
+			// Get the UV set plug for this entry.
+			//
+			string	$siblingPlug[] = `listConnections -p on -s yes -d no
+								($shaveNode + "." + $uvSetEntry)`;
+
+			//
+			// Make sure that this isn't the UV set to which the
+			// textures were just added.
+			//
+			if ((size($siblingPlug) > 0) && ($siblingPlug[0] != $uvSetPlug))
+			{
+				tokenize($siblingPlug[0], ".", $parts);
+
+				//
+				// If this UV set comes from the same mesh, then remove all
+				// the textures which were just added to its sibling.
+				//
+				if ((size($parts) > 0) && ($parts[0] == $parent))
+				{
+					removeUVSetTextures($siblingPlug[0], $texturesToAdd);
+				}
+			}
+		}
+
+		waitCursor -state off;
+	}
+}
+
+
+global proc shaverelationshipEditorBreakShaveRelationship(
+	string $panel,
+	string $texturesToRemove[])
+{
+	int	$numTexturesToRemove = size($texturesToRemove);
+
+	if ($numTexturesToRemove > 0)
+	{
+		string	$leftSelection = ($panel + "LeftSelection");
+		string	$uvSets[] = `selectionConnection -query -object $leftSelection`;
+
+		if (size($uvSets) > 0)
+		{
+			waitCursor -state on;
+
+			//
+			// Remove the specified textures.
+			//
+			removeUVSetTextures($uvSets[0], $texturesToRemove);
+
+			waitCursor -state off;
+		}
+	}
+}
+
+
+proc getUpstreamTextures(string $node, string $upstreamTextureArray[])
+{
+	string $history[] = `listHistory $node`;
+
+	int $i;
+
+	for ($i = 0; $i < size($history); $i++)
+	{
+		if (size(`ls ($history[$i] + ".uvCoord")`) > 0)
+		{
+			if (`nodeType $history[$i]` != "place2dTexture")
+			{
+				$upstreamTextureArray[size($upstreamTextureArray)] 
+					= $history[$i];
+			}
+		}
+	}
+}
+
+
+global proc shave_RE_loadCurrentShaveNode(string $panel)
+{
+	int $i;
+
+	selectionConnection
+		-edit
+		-clear
+		($panel + "LeftSelection");
+
+	selectionConnection
+		-edit
+		-clear
+		($panel + "RightSelection");
+
+	selectionConnection
+		-edit
+		-clear
+		($panel + "LeftMainList");
+
+	selectionConnection
+		-edit
+		-clear
+		($panel + "RightMainList");
+
+	string $uvMainListConnection = ($panel + "LeftMainList");
+	string $textureMainListConnection = ($panel + "RightMainList");
+	string $shaveNode = shave_getCurrentNode();
+
+	if ($shaveNode != "")
+	{
+		string $growthSurfaces[] = `shaveNode -q -gl $shaveNode`;
+
+		if (size($growthSurfaces) > 0)
+		{
+			//
+			// $growthSurfaces may contain components, so let's use a
+			// temporary set to filter it down to just the shape nodes.
+			//
+			string	$tempSet = `sets -empty`;
+
+			sets -add $tempSet $growthSurfaces;
+
+			$growthSurfaces = `sets -q -nodesOnly $tempSet`;
+
+			int		$numMeshes = 0;
+			string	$shape;
+
+			for ($shape in $growthSurfaces)
+			{
+				if (objectType($shape) == "mesh")
+				{
+					selectionConnection
+						-edit
+						-select $shape
+						$uvMainListConnection;
+
+					$numMeshes++;
+				}
+			}
+
+			if ($numMeshes > 0)
+			{
+				string	$textures[];
+				string	$dstex[];
+				string	$tex1;
+				string	$tex2;
+
+				string	$texturableAttrs[] = {
+							"shaveTex",
+							"hairColorTexture",
+							"rootHairColorTexture",
+							"mutantHairColorTexture"
+						};
+				string	$attr;
+
+				for ($attr in $texturableAttrs)
+				{
+					$textures = `listConnections -s yes -d no
+							($shaveNode + "." + $attr)`;
+
+					for ($tex1 in $textures)
+					{
+						//
+						// Let's also include any textures upstream of this
+						// one.
+						//
+						getUpstreamTextures($tex1, $dstex);
+
+						for($tex2 in $dstex)
+						{
+							selectionConnection
+								-edit
+								-select $tex2
+								$textureMainListConnection;
+						}
+					}
+				}
+
+				//
+				// If there's only one growth mesh, and it has only one uv
+				// set, then select it.
+				//
+				if (($numMeshes == 1)
+				&&	(`getAttr -size ($shape + ".uvst")` == 1))
+				{
+					selectionConnection
+						-edit
+						-select $shape
+						($panel + "LeftSelection");
+				}
+			}
+		}
+	}
+
+	string $leftSelection = ($panel + "LeftSelection");
+	string $keys[] = `selectionConnection -query -object $leftSelection`;
+
+	selectshaveRelatedItems($panel, $keys[0]);
+}
+
+
+proc configureLeftOutliner(string $panel)
+{
+	string $topLayout = `panel -query -control $panel`;
+	setParent $topLayout;
+
+	outlinerEditor
+		-edit
+		-directSelect			true
+		-ignoreDagHierarchy		false
+		-showShapes 			true
+		-showAttributes 		true
+		-showConnected 			false
+		-showDagOnly 			false
+		-showSetMembers 		true
+		-doNotSelectNewObjects 	true
+		-autoSelectNewObjects 	false
+		-setFilter 				0
+		-filter					0
+		-showCompounds			false
+		-autoExpand				true
+		-expandConnections		false
+		-showLeafs				true
+		-showTextureNodesOnly	false
+		-showUVAttrsOnly		true
+		-highlightSecondary		false
+		-showAttrValues			true
+		-allowMultiSelection	false
+		-mainListConnection		($panel + "LeftMainList")
+		($panel + "LeftOutliner");
+}
+
+
+proc configureRightOutliner(string $panel)
+{
+	outlinerEditor
+		-edit
+		-directSelect			true
+		-ignoreDagHierarchy		false
+		-showShapes 			false
+		-showAttributes 		false
+		-showConnected 			false
+		-showDagOnly 			false
+		-showSetMembers 		true
+		-doNotSelectNewObjects 	true
+		-autoSelectNewObjects 	false
+		-setFilter 				0
+		-filter					0
+		-autoExpand				false
+		-expandConnections		false
+		-showCompounds			false
+		-showLeafs				false
+		-showTextureNodesOnly	true
+		-showUVAttrsOnly		false
+		-highlightSecondary		false
+		-showAttrValues			false
+		-mainListConnection		($panel + "RightMainList")
+		($panel + "RightOutliner");
+}
+
+
+proc setTextureVisibility(
+	string 	$texture,
+	int		$isVisible)
+{
+	string 	$colorDstArray[];
+	string 	$alphaDstArray[];
+	int 	$i;
+	string 	$tokenArray[];
+	string 	$dstNode;
+	string 	$dstAttr;
+	int		$success;
+
+	$colorDstArray = 
+		`listConnections 
+			-source false 
+			-destination true 
+			-plugs true 
+			($texture + ".outColor")`;
+	$alphaDstArray = 
+		`listConnections 
+			-source false 
+			-destination true 
+			-plugs true 
+			($texture + ".outAlpha")`;
+	
+	for ($i = 0; $i < size($colorDstArray); $i++)
+	{
+		$success = false;
+		tokenize($colorDstArray[$i], ".", $tokenArray);
+		$dstNode = $tokenArray[0];
+		$inputsAttr = $tokenArray[1];
+		$dstAttr = $tokenArray[2];
+
+		if ((`nodeType $dstNode` == "layeredTexture") && ($dstAttr == "color"))
+		{
+			string	$regExp;
+			string	$index;
+
+			$regExp = "\\[.*\\]";
+			$index = match($regExp, $inputsAttr);
+
+			if ($index != "")
+			{
+				setAttr 
+					($dstNode + ".inputs" + $index + ".isVisible") 
+					$isVisible;
+				$success = true;
+			}
+		}
+
+		if (!$success)
+		{
+			shadingConnection 
+				-edit 
+				-connectionState $isVisible 
+				$colorDstArray[$i];
+		}
+	}
+
+	for ($i = 0; $i < size($alphaDstArray); $i++)
+	{
+		$success = false;
+		tokenize($alphaDstArray[$i], ".", $tokenArray);
+		$dstNode = $tokenArray[0];
+		$inputsAttr = $tokenArray[1];
+		$dstAttr = $tokenArray[2];
+
+		if ((`nodeType $dstNode` == "layeredTexture") && ($dstAttr == "alpha"))
+		{
+			string	$regExp;
+			string	$index;
+
+			$regExp = "\\[.*\\]";
+			$index = match($regExp, $tokenArray[1]);
+
+			if ($index != "")
+			{
+				setAttr 
+					($dstNode + ".inputs" + $index + ".isVisible")
+					$isVisible;
+				$success = true;
+			}
+		}
+
+		if (!$success)
+		{
+			shadingConnection 
+				-edit 
+				-connectionState $isVisible 
+				$alphaDstArray[$i];
+		}
+	}
+}
+
+
+proc ignoreTexture(string $texture)
+{
+	setTextureVisibility($texture, false);
+}
+
+
+proc unignoreTexture(string $texture)
+{
+	setTextureVisibility($texture, true);
+}
+
+
+global proc shaverelationshipEditorMenuCommand(string $panel, string $command)
+{
+	string	$uvMainListConnection = ($panel + "LeftMainList");
+	string	$textureMainListConnection = ($panel + "RightMainList");
+	string	$uvSelection = ($panel + "LeftSelection");
+	string	$textureSelection = ($panel + "RightSelection");
+
+	if ($command == "leftEditRemoveUvSet")
+	{
+		string $uvSetArray[];
+		$uvSetArray = `selectionConnection -q -object $uvSelection`;
+		for ($i =0; $i < size($uvSetArray); $i++)
+		{
+			string $uvSetName = `getAttr $uvSetArray[$i]`;
+			string $buffer[];
+			string $objName = "";
+			$numTokens = `tokenize $uvSetArray[$i] "." $buffer`;
+			if ($numTokens > 0)
+				$objName = $buffer[0];
+			if (size($uvSetName) && size($objName))
+			{
+				polyUVSet -delete -uvSet $uvSetName $objName;
+			}
+		}
+	}
+	else if ($command == "leftEditRenameUvSet")
+	{
+		// Rename the UV set(s).
+		string $uvSetArray[];
+		$uvSetArray = `selectionConnection -q -object $uvSelection`;
+		int $numItems = size($uvSetArray);
+		if ($numItems)
+		{
+			string $attrName = $uvSetArray[$numItems-1];
+			string $uvSetName = `getAttr $attrName`;
+			string $buffer[];
+			string $objName = "";
+			int $numTokens = `tokenize $attrName "." $buffer`;
+			string $objName = "";
+			if ($numTokens > 0)
+				$objName = $buffer[0];
+			if (size($uvSetName) && size($objName))
+			{
+				performRenameUVSet 1 $uvSetName $objName;
+			}
+		}
+	}
+	else if ($command == "rightEditMenuSelectHighlighted")
+	{
+
+		string $selectedItems[] = 
+			`selectionConnection -q -object ($panel + "RightSelection")`;
+		select -r -ne $selectedItems;
+	}
+	else if ($command == "rightEditIgnoreTexture")
+	{
+		// Ignore the textures
+		// 
+		string 	$texturesToIgnoreArray[];  
+		int		$i;
+
+		$texturesToIgnoreArray = 
+			`selectionConnection -q -object $textureSelection`;
+
+		for ($i = 0; $i < size($texturesToIgnoreArray); $i++)
+		{
+			ignoreTexture($texturesToIgnoreArray[$i]);
+		}
+	}
+	else if ($command == "rightEditUnignoreTexture")
+	{
+		// Unignore the textures
+		// 
+		string 	$texturesToUnignoreArray[];  
+		int		$i;
+
+		$texturesToUnignoreArray = 
+			`selectionConnection -q -object $textureSelection`;
+
+		for ($i = 0; $i < size($texturesToUnignoreArray); $i++)
+		{
+			unignoreTexture($texturesToUnignoreArray[$i]);
+		}
+	}
+	else if ($command == "rightEditIsolateTexture")
+	{
+		// Isolate the textures
+		//
+		string 	$texturesToIsolateArray[];
+		string 	$allTexturesArray[];
+		string 	$downstreamNodes[];
+		int 	$i; 
+
+		$texturesToIsolateArray = 
+			`selectionConnection -q -object $textureSelection`;
+		$downstreamNodes =
+			`selectionConnection -q -object $textureMainListConnection`;
+
+		for ($i = 0; $i < size($downstreamNodes); $i++)
+		{
+			getUpstreamTextures($downstreamNodes[$i], $allTexturesArray);
+		}
+
+		for ($i = 0; $i < size($allTexturesArray); $i++)
+		{
+			ignoreTexture($allTexturesArray[$i]);
+		}
+
+		for ($i = 0; $i < size($texturesToIsolateArray); $i++)
+		{
+			unignoreTexture($texturesToIsolateArray[$i]);
+		}
+	}
+	else if ($command == "rightEditUnignoreAllTextures")
+	{
+		string 	$allTexturesArray[];
+		string 	$downstreamNodes[];
+		int 	$i; 
+
+		$downstreamNodes =
+			`selectionConnection -q -object $textureMainListConnection`;
+
+		for ($i = 0; $i < size($downstreamNodes); $i++)
+		{
+			getUpstreamTextures($downstreamNodes[$i], $allTexturesArray);
+		}
+
+		for ($i = 0; $i < size($allTexturesArray); $i++)
+		{
+			unignoreTexture($allTexturesArray[$i]);
+		}
+	}
+	else if ($command == "rightEditAttributeEditor")
+	{
+		string $highlighted[];
+
+		$highlighted = `selectionConnection -q -object $textureSelection`;
+
+		if (size($highlighted) > 1)
+		{
+			warning(
+				"Cannot open attribute editor on multiple items. "
+				+ "Please choose only one.");
+			return;
+		}
+		else if (size($highlighted) == 0)
+		{
+			warning("No item is highlighted.");
+			return;
+		}
+		else
+		{
+			showEditor $highlighted[0];
+		}
+	}
+}
+
+
+proc configureLeftEditMenu(string $panel)
+{
+	string $topLayout = `panel -query -control $panel`;
+
+	setParent $topLayout;
+
+	menu 
+		-edit 
+		-deleteAllItems 
+		leftEditMenu;
+
+	setParent -menu leftEditMenu;
+
+	string $textItem;
+
+	menuItem 
+		-label "Remove UV Set"
+		-annotation 
+			("Remove UV Set: Remove the highlighted UV set from the lead "
+				+ "object of the current selection")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "leftEditRemoveUvSet")
+		leftEditMenuRemoveUvSetItem;
+
+	menuItem 
+		-label "Rename UV Set..."
+		-annotation 
+			("Rename UV Set: Rename the highlighted UV set on the "
+				+ "trailing item of the current selection")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "leftEditRenameUvSet")
+		leftEditMenuRenameUvSetItem;
+
+	setParent -menu ..;
+}
+
+
+proc configureRightEditMenu(string $panel)
+{
+	string $topLayout = `panel -query -control $panel`;
+
+	setParent $topLayout;
+
+	menu
+		-edit
+		-deleteAllItems
+		-enable false
+		rightEditMenu;
+
+	//
+	// Windows doesn't refresh the menu to show it disabled, so let's force
+	// it.
+	//
+	if (`about -nt`)
+	{
+		menu -e -visible false rightEditMenu;
+		menu -e -visible true rightEditMenu;
+	}
+	
+	setParent -menu rightEditMenu;
+
+	//
+	// Note that none of the items below currently works, which is why the
+	// menu is disabled.
+	//
+	menuItem
+		-label		"Select Highlighted"
+		-command	
+			("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditMenuSelectHighlighted")
+		rightEditMenuSelectHighlightedItem;
+
+	menuItem
+		-label "Ignore Texture"
+		-annotation
+			("Ignore Texture: Ignore the highlighted textures when "
+				+ "rendering")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditIgnoreTexture")
+		rightEditMenuIgnoreTextureItem;
+	menuItem
+		-label "Unignore Texture"
+		-annotation
+			("Unignore Texture: Stop ignoring the highlighted textures "
+				+ "when rendering")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditUnignoreTexture")
+		rightEditMenuUnignoreTextureItem;
+	menuItem
+		-label "Isolate Texture"
+		-annotation
+			("Isolate Texture: Ignore all textures in the list except the "
+				+ "highlighted textures when rendering")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditIsolateTexture")
+		rightEditMenuIsolateTextureItem;
+	menuItem
+		-label "Unignore All Textures"
+		-annotation
+			("Unignore All Textures: Unignore all textures in the list "
+				+ "when rendering")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditUnignoreAllTextures")
+		rightEditMenuUnignoreAllTexturesItem;
+	menuItem
+		-label "Attribute Editor..."
+		-annotation
+			("Attribute Editor: Open the attribute editor for the "
+				+ "highlighted texture")
+		-command ("shaverelationshipEditorMenuCommand "
+				+ $panel
+				+ " "
+				+ "rightEditAttributeEditor")
+		rightEditMenuAttributeEditorItem;
+}
+
+
+proc configureLabels(string $panel)
+{
+	string $topLayout = `panel -query -control $panel`;
+
+	setParent $topLayout;
+
+	text
+		-edit 
+		-label "UV Sets"
+		-manage true
+		"leftDescription";
+
+	text
+		-edit 
+		-label "Shave Textures"
+		-manage true
+		"rightDescription";
+}
+
+
+proc configureLeftSelection( string $panel)
+{
+	string $selectionConnection = ($panel + "LeftSelection");
+
+	selectionConnection
+		-edit
+		-addScript ""
+		-removeScript ""
+		$selectionConnection;
+
+	selectionConnection
+		-edit
+		-clear
+		 $selectionConnection;
+
+	selectionConnection 
+		-edit
+		-addScript ("shaverelationshipEditorSelectKey " + $panel)
+		$selectionConnection;
+
+	selectionConnection 
+		-edit
+		-removeScript ("shaverelationshipEditorDeselectKey " + $panel)
+		$selectionConnection;
+
+	string $outliner = ($panel + "LeftOutliner");
+
+	outlinerEditor
+		-edit
+		-allowMultiSelection false
+		-alwaysToggleSelect false
+		$outliner;
+}
+
+
+proc configureRightSelection(string $panel)
+{
+	string $selectionConnection = ($panel + "RightSelection");
+
+
+	selectionConnection
+		-edit
+		-addScript ""
+		-removeScript ""
+		$selectionConnection;
+
+	selectionConnection
+		-edit
+		-clear
+		 $selectionConnection;
+ 
+	selectionConnection 
+		-edit
+		-addScript ("shaverelationshipEditorDisallowSelectItem " + $panel)
+		$selectionConnection;
+
+
+	string $outliner = ($panel + "RightOutliner");
+
+	outlinerEditor
+		-edit
+		-allowMultiSelection true
+		-alwaysToggleSelect true
+		$outliner;
+}
+
+
+global int $gShaveRelationshipsChangedScriptJobNumber = -1;
+
+
+global proc shave_RE_setShaveNodeChangedScript(string $panel)
+{
+	global int $gShaveRelationshipsChangedScriptJobNumber;
+	
+	if ($gShaveRelationshipsChangedScriptJobNumber != -1)
+	{
+		scriptJob -force -kill $gShaveRelationshipsChangedScriptJobNumber;
+		$gShaveRelationshipsChangedScriptJobNumber = -1;
+	}
+	
+	$gShaveRelationshipsChangedScriptJobNumber = 
+		`scriptJob -protected
+			-parent $panel
+			-event 	("SelectionChanged") 
+				("shave_RE_loadCurrentShaveNode " + $panel)`;
+}
+
+
+global proc shave_RE_disableShaveNodeChangedScript(string $panel)
+{
+	global int $gShaveRelationshipsChangedScriptJobNumber; 
+
+	if ($gShaveRelationshipsChangedScriptJobNumber != -1)
+	{
+		scriptJob -force -kill $gShaveRelationshipsChangedScriptJobNumber;
+		$gShaveRelationshipsChangedScriptJobNumber = -1;
+	}
+}
+
+
+proc shave_RE_init(string $panel)
+{
+	// put the string from the popup menu into the text field to identify
+	// the current task
+	//
+	optionMenu -e -select 1 shaveTaskPopup;
+
+	configureLabels($panel);
+	configureLeftEditMenu($panel);
+	configureRightEditMenu($panel);
+	configureLeftOutliner($panel);
+	configureRightOutliner($panel);
+	configureLeftSelection($panel);
+	configureRightSelection($panel);
+
+	shave_RE_loadCurrentShaveNode($panel);
+
+	// Set the shaverelationships changed script
+	//
+	shave_RE_setShaveNodeChangedScript($panel);
+}
+
+
+proc createshaveTaskPopup(string $panel)
+{
+	//
+	// Our editor only contains a single task, but we still provide the
+	// popup control because it helps to remind the user what zie's doing.
+	//
+	optionMenu shaveTaskPopup;
+
+	menuItem 
+		-label "Shave UV Linking"
+		-annotation "Specify the UV set used by a particular Shave texture"
+		taskShaveUvLinkingItem;
+
+	setParent -m ..;
+}
+
+
+global proc shave_RE_buildContextHelp(string $nameRoot, string $menuParent)
+{
+	menuItem -label "Help on ShaveRelationship Editor..."
+		-enableCommandRepeat false
+		-command "showHelp shaveRelationshipEditor";
+}
+
+
+proc createTopMenu(string $panel)
+{
+	// The Options menu
+	//
+	string $optionsMenu = 
+		`menu
+			-label "Options"
+			-tearOff false
+			-enable false
+			optionsMenu`;
+
+	//	Add support for the Context Sensitive Help Menu.
+	//
+	addContextHelpProc $panel "shave_RE_buildContextHelp";
+			
+	// set the menu bar visibility
+	//
+	int $menusOkayInPanels = `optionVar -q allowMenusInPanels`;
+	panel -e -mbv $menusOkayInPanels $panel;
+}
+
+
+proc string shaveCreatePane(string $side, string $outlinerName)
+{
+	string $paneLayout = ($side + "PaneLayout");
+	
+	formLayout $paneLayout;
+
+		string $description = ($side + "Description");
+		text 
+			-label 		"Pane Description"
+			-height 	25
+			-align 		"center"
+			$description;
+
+		string $menuBarLayout = ($side + "MenuBarLayout");
+		menuBarLayout $menuBarLayout;
+
+			menu
+				-label "List"
+				-enable false
+				($side + "ListMenu");
+			setParent -menu; // from ListMenu
+
+			menu
+				-label "Edit"
+				-allowOptionBoxes true
+				($side + "EditMenu");
+			setParent -menu; // from EditMenu
+
+			string $outlinerLayout = ($side + "OutlinerLayout");
+			formLayout $outlinerLayout;
+
+				string $outlinerLayoutName = addSharedOutlinerEditor ($outlinerLayout, $outlinerName);
+
+				// add the filter UI field to the outliner
+				//
+				string $filterField = filterUICreateField($outlinerName, $outlinerLayout);
+
+				formLayout
+					-edit
+					-attachForm $filterField "left"		0
+					-attachForm $filterField "right"	0
+					-attachForm $filterField "top" 		0
+					-attachNone $filterField "bottom"
+
+					-attachControl $outlinerLayoutName "top" 	  0 $filterField
+					-attachForm    $outlinerLayoutName "left"   0 
+					-attachForm    $outlinerLayoutName "right"  0 
+					-attachForm    $outlinerLayoutName "bottom" 0 
+					$outlinerLayout;
+
+			setParent ..; // from $outlinerLayout
+
+		setParent ..; // from $menuBarLayout
+
+		formLayout
+			-edit
+
+			-attachForm $description "top" 		0 
+			-attachForm $description "left" 	0 
+			-attachForm $description "right" 	0 
+			-attachNone $description "bottom" 
+
+			-attachControl 	$menuBarLayout "top" 	0 $description
+			-attachForm 	$menuBarLayout "left" 	0
+			-attachForm 	$menuBarLayout "right" 	0
+			-attachForm 	$menuBarLayout "bottom" 0
+
+			$paneLayout;
+
+	setParent ..; // from $paneLayout
+	
+	return $paneLayout;
+}
+
+
+global proc createShaveRelationshipPanel(string $panel) 
+{
+
+	createSharedOutlinerEditor ($panel + "LeftOutliner");
+	createSharedOutlinerEditor ($panel + "RightOutliner");
+
+
+	if(!`selectionConnection -exists ($panel + "LeftMainList")`)
+		selectionConnection ($panel + "LeftMainList");
+
+	if(!`selectionConnection -exists ($panel + "RightMainList")`)
+		selectionConnection ($panel + "RightMainList");
+
+	if(!`selectionConnection -exists ($panel + "LeftSelection")`)
+		selectionConnection ($panel + "LeftSelection");
+
+	if(!`selectionConnection -exists ($panel + "RightSelection")`)
+		selectionConnection ($panel + "RightSelection");
+
+	if(!`selectionConnection -exists ($panel + "LeftMainListManual")`)
+		selectionConnection ($panel + "LeftMainListManual");
+
+	if(!`selectionConnection -exists ($panel + "RightMainListManual")`)
+		selectionConnection ($panel + "RightMainListManual");
+
+
+	outlinerEditor
+		-edit
+		-setsIgnoreFilters true
+		-selectionConnection ($panel + "LeftSelection")
+		($panel + "LeftOutliner");
+	outlinerEditor
+		-edit
+		-setsIgnoreFilters true
+		-selectionConnection ($panel + "RightSelection")
+		($panel + "RightOutliner");
+}
+
+
+global proc initShaveRelationshipPanel(string $panel)
+{
+	//
+	// If the window is open, we need to call shave_RE_init to initialize
+	// it properly.
+	//
+	if (`optionMenu -exists shaveTaskPopup`) shave_RE_init($panel);
+}
+
+
+global proc addShaveRelationshipPanel(string $panel) 
+{
+	createTopMenu($panel);
+
+	formLayout mainForm;
+
+		createshaveTaskPopup($panel);
+
+		separator
+			-height 	5
+			-style 		"out"
+			taskMenuSeparator;
+
+		int $height = 24;
+
+		formLayout leftRightForm;
+			paneLayout
+				-configuration 		"vertical2"
+				-separatorThickness 5
+				leftRightLayout;
+				
+				string $leftPaneLayout = shaveCreatePane(
+					"left",
+					($panel + "LeftOutliner")); 
+				string $rightPaneLayout = shaveCreatePane(
+					"right",
+					($panel + "RightOutliner")); 
+
+			// add the filter UI menu items to each side
+			//
+			filterUICreateMenu(($panel + "LeftOutliner"), "leftMenuBarLayout");
+			filterUICreateMenu(($panel + "RightOutliner"), "rightMenuBarLayout");
+
+			//	Get the popup menu attached to each outliner and add an item
+			//	to access the filter menu.
+			//
+			string $popupMenuParent, $popupMenu, $popupMenuList[];
+			int    $button;
+			$popupMenuParent = `editor -query -control ($panel + "LeftOutliner")`;
+			if ("" != $popupMenuParent && "NONE" != $popupMenuParent) {
+				$popupMenuList = `control -query -popupMenuArray $popupMenuParent`;
+				for ($popupMenu in $popupMenuList) {
+					$button = `popupMenu -query -button $popupMenu`;
+					if (3 == $button) {
+						$popupMenu = $popupMenuParent + "|" + $popupMenu;
+						filterUICreateMenu(($panel + "LeftOutliner"), $popupMenu);
+						break;
+					}
+				}
+			}
+			$popupMenuParent = `editor -query -control ($panel + "RightOutliner")`;
+			if ("" != $popupMenuParent && "NONE" != $popupMenuParent) {
+				$popupMenuList = `control -query -popupMenuArray $popupMenuParent`;
+				for ($popupMenu in $popupMenuList) {
+					$button = `popupMenu -query -button $popupMenu`;
+					if (3 == $button) {
+						$popupMenu = $popupMenuParent + "|" + $popupMenu;
+						filterUICreateMenu(($panel + "RightOutliner"), $popupMenu);
+						break;
+					}
+				}
+			}
+
+			setParent ..; // from $leftRightLayout
+
+			formLayout
+				-edit
+				-attachForm		"leftRightLayout" "left" 	0
+				-attachForm		"leftRightLayout" "right" 	0
+				-attachForm		"leftRightLayout" "top" 	0
+				-attachForm		"leftRightLayout" "bottom" 	0
+				leftRightForm;
+
+		setParent ..; // from leftRightForm
+
+		formLayout
+			-edit
+
+			-attachForm		"taskMenuSeparator" "left" 	0
+			-attachForm		"taskMenuSeparator" "right"	0
+			-attachControl	"taskMenuSeparator" "top" 	0 "shaveTaskPopup"
+			-attachNone		"taskMenuSeparator" "bottom"
+
+			-attachForm		"leftRightForm" "left"		0
+			-attachForm		"leftRightForm" "right"		0
+			-attachControl	"leftRightForm" "top"		0 "taskMenuSeparator"
+			-attachForm		"leftRightForm" "bottom" 	0
+
+			mainForm;
+
+	setParent ..; // from mainForm
+
+	shave_RE_init($panel);
+}
+
+
+global proc removeShaveRelationshipPanel(string $panel) 
+{
+	removeSharedOutlinerEditor ($panel+"LeftOutliner");
+	removeSharedOutlinerEditor ($panel+"RightOutliner");
+
+	filterUIRemoveView($panel+"LeftOutliner");
+	filterUIRemoveView($panel+"RightOutliner");
+}
+
+
+global proc string saveStateShaveRelationshipPanel(string $panel) 
+{
+	string $stateStr = "";
+	return $stateStr;
+}
+
+
+global proc deleteShaveRelationshipPanel(string $panel) 
+{
+}
+
+// ---------------------------------------------------------------------------
+// 	Procedures which the user uses to invoke the shaverelationship editor
+// 
+
+global proc shaveLinkingEditor()
+{
+
+	global int $gShaveRelationshipsChangedScriptJobNumber;
+	$gShaveRelationshipsChangedScriptJobNumber = -1;
+
+	tearOffPanel "ShaveRelationship Editor" "shaverelationshipPanel" true;
+
+	string $shaverelationshipEditorPanels[] = 
+		`getPanel -scriptType "shaverelationshipPanel"`;
+	
+	shave_RE_init($shaverelationshipEditorPanels[0]);
+}
+

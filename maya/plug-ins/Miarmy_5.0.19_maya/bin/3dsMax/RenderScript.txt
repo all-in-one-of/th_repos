@@ -1,0 +1,28 @@
+-- Scripting > MaxScriptEditor --
+-- Setup Render --
+renderFrames = #{1,2,3,4,5}
+cam = getnodebyname("Camera003")
+imageFolder = "e:/"
+imageName = "test"
+resX = 450
+resY = 450
+
+-- Setup Miarmy --
+MiarmyVRayObj = getnodebyname("McdVRayProxy001")
+
+-- Render All Frames --
+for i = 1 to renderFrames.count do
+(
+	fileName = imageFolder + imageName + (i as string) + ".jpg"
+	b = bitmap resX resY filename:fileName
+	
+	if renderFrames[i] then
+	(
+		MiarmyVRayObj.renderFrame = i
+		
+		at time i
+		render 450 450 camera:cam to:b
+		save b
+	)
+	close b
+)

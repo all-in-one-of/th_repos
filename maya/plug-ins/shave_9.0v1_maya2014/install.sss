@@ -1,0 +1,37 @@
+<silentsettings>
+	<variables>
+		<var condition='%BitDirExt%="64"' name="Setup64Bit" value="1"/>
+		<var name="CompactVersion" value="%MayaVersionMajor%%MayaVersionMinor%"/>
+		<var condition='%MayaVersion%<>"8.0"' name="MayaLocation" value="C:\tools\Autodesk\Maya2014"/>
+		<var name="VrayPluginsDir" value="%MayaLocation%\vray\vrayplugins"/>
+		<var name="FullMayaVersion" value="%MayaVersion%%BitPkgExt%"/>
+		<var name="CompressionAlgorithm" value="1"/>
+		<var defvalue="undefined" name="RegInstallPath" regkey="HKLM\Software\JoeAlter\shaveHaircut\maya%MayaVersion%" regparam="InstallPath" type="reg"/>
+		<var condition='%RegInstallPath%="undefined"' name="TempInstallPath" value="%ProgramFiles%\JoeAlter\shaveHaircut\maya%MayaVersion%"/>
+		<var name="InstallPath" value="C:\Program Files\JoeAlter\shaveHaircut\maya2014"/>
+		<var name="DocDir" value=".\docs"/>
+		<var name="ModuleLocation" value="%MayaLocation%\modules"/>
+		<var name="MRLocation" value="%ProgramFiles%\Autodesk\mentalrayForMaya%MayaVersion%"/>
+		<var name="RayrcLocation" value="%MRLocation%"/>
+		<var condition='%RegInstallPath%="undefined"' name="ReadmeDlg" value="DLG_README,"/>
+		<var name="RawDir" value="raw%BitDirExt%"/>
+		<var condition='%ReleaseType%="Release"' name="RawEngineDir" value="%RawDir%\Release"/>
+		<var name="RawVersionDir" value="%RawDir%\%ReleaseType%\%CompactVersion%"/>
+		<var name="ProtDir" value="protected%BitDirExt%"/>
+		<var condition='%ReleaseType%="Release"' name="ProtEngineDir" value="%ProtDir%\Release"/>
+		<var name="ProtVersionDir" value="%ProtDir%\%ReleaseType%\%CompactVersion%"/>
+		<var name="UrlText" value="http://www.joealter.com"/>
+		<var name="MayaVersion" value="2014"/>
+		<var name="MayaVersionMajor" value="2014"/>
+		<var name="MayaVersionMinor" value="0"/>
+		<var name="BitDirExt" value="64"/>
+		<var name="BitPkgExt" value="x64"/>
+		<var name="ReleaseType" value="Release"/>
+		<var name="ShaveVersion" value="9.0v31"/>
+		<var name="AliasName" value="Alias"/>
+		<var name="InstalledAppUninstallPath" value="C:\Program Files\JoeAlter\shaveHaircut\maya2014"/>
+		<var name="UninstallPath" value="%InstallPath%"/>
+		<var name="LangID" value="CHS"/>
+		<var name="BrowseResult" value="C:\tools\Autodesk\Maya2014"/>
+	</variables>
+</silentsettings>

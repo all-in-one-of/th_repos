@@ -1,0 +1,151 @@
+global proc create_nP_instance(string $myMeshName,string $instanceArray[],int $ct_index,int $ct_sc, int $ct_ro,int $aimD)
+{
+/*
+//
+ create_nP_instance(
+                     $myMeshName = "pPlane1",
+                     $instanceArray = {"pCone1","pCone2","pCone3"},
+                     $ct_index = 1,
+                     $ct_sc = 1,
+                     $ct_ro = 1,
+                     $aimD = 0
+                     )
+
+*/
+string $myEm[];
+string $myP[];
+select -r $myMeshName;
+$myEm = `emitter -type surface  -name ($myMeshName + "_em") -r 100 -sro 0 -nuv 0 -cye none -cyi 1 -spd 0 -srn 0 -nsp 1 -
+
+tsp 0 -mxd 0 -mnd 0 -dx 1 -dy 0 -dz 0 -sp 0 `;
+$myP = `nParticle -n ($myMeshName + "_nParticle")`;
+connectDynamic -em $myEm[1] $myP[1]; 
+
+$myIns =  `particleInstancer -addObject -object $instanceArray[0] -cycle None -cycleStep 1 -cycleStepUnits Frames -
+
+levelOfDetail Geometry -rotationUnits Degrees -rotationOrder XYZ -position worldPosition -age age $myP[1] `;
+for ($i = 1; $i <= size($instanceArray);$i++)
+{
+particleInstancer -e -addObject -object $instanceArray[$i] $myP[1];
+}
+
+$exp = "\n";
+if ($ct_index == 1)
+{
+    addAttr -ln "ct_index0"  -dt doubleArray  $myP[1];
+    addAttr -ln "ct_index"  -dt doubleArray  $myP[1];
+    setAttr -e -keyable true ($myP[1] + ".ct_index");
+    
+    particleInstancer -e -name $myIns -objectIndex ct_index $myP[1];
+$n = size($instanceArray);
+    $exp = "ct_index = rand (0," + $n + ");";
+}
+if ($ct_sc == 1)
+{
+    addAttr -ln "ct_scale0"  -dt doubleArray  $myP[1];
+    addAttr -ln "ct_scale"  -dt doubleArray  $myP[1];
+    setAttr -e -keyable true ($myP[1] + ".ct_scale");
+
+    particleInstancer -e -name $myIns -scale ct_scale $myP[1];
+    
+    $exp += "\nct_scale = abs(mag(position - <<0,0,0>>)*rand(0.005,0.0075));\n\n";
+}
+if ($ct_ro == 1)
+{
+    addAttr -ln "ct_rotation0"  -dt doubleArray  $myP[1];
+    addAttr -ln "ct_rotation"  -dt doubleArray  $myP[1];
+    setAttr -e -keyable true ($myP[1] + ".ct_rotation");
+    particleInstancer -e -name $myIns -rotation ct_rotation $myP[1];
+    
+    
+    $exp += "\nvector  $ct_Ro = ct_rotation;\nct_rotation = <<$ct_Ro.x,rand(-90,90),$ct_Ro.z>>;\n\n";
+}
+if ($aimD == 1)
+{
+        addAttr -ln "aimDirect0"  -dt vectorArray  $myP[1];
+        addAttr -ln "aimDirect"  -dt vectorArray  $myP[1];
+        setAttr -e -keyable true ($myP[1] + ".aimDirect");
+        
+        addAttr -ln goalU -dt doubleArray $myP[1];
+        addAttr -ln goalU0 -dt doubleArray $myP[1];
+        addAttr -ln goalV -dt doubleArray $myP[1];
+        addAttr -ln goalV0 -dt doubleArray $myP[1];
+        addAttr -ln parentU -dt doubleArray $myP[1];
+        addAttr -ln parentU0 -dt doubleArray $myP[1];
+        addAttr -ln parentV -dt doubleArray $myP[1];
+        addAttr -ln parentV0 -dt doubleArray $myP[1];
+        
+        goal -w 1 -utr 0 -g $myMeshName $myP[1];
+        setAttr ($myEm[1] + ".needParentUV") 1;
+        //source "C:/Program Files/Autodesk/Maya2011/scripts/AETemplates/AEdynObjectGoalWeightNew.mel"; 
+		
+		global string $hd_scriptsDir;
+		string $sourceDir = $hd_scriptsDir + "/AETemplates/AEdynObjectGoalWeightNew.mel";
+		$cmd = "source \"" + $sourceDir +"\";\n";
+		eval $cmd;
+
+        addPerParticleGoalPointAttr $myP[1] 0 WorldNormal vectorArray;
+        
+        particleInstancer -e -name $myIns -aimDirection goalWorldNormal0PP $myP[1];
+        particleInstancer -e -name $myIns -aimAxis aimDirect $myP[1];
+        
+        $exp += "\naimDirect = <<0,1,0>>;\ngoalU = parentU;\ngoalV = parentV;\n";
+        
+}   
+print $exp;
+    dynExpression -s  $exp -c $myP[1];
+
+
+
+group -n ($myMeshName + "ins_grp") $myEm[1] $myP[0] $myIns ;
+    
+}
+
+
+
+
+global proc createInstanceGR()
+{
+string $array[] = `ls -sl`;
+string $baseGeoName,$instanceArray[];
+$baseGeoName = $array[size($array)-1];
+//print $baseGeoName;
+stringArrayRemoveAtIndex(size($array)-1,$array);
+$instanceArray = $array;
+//print $instanceArray;
+
+int $i = `checkBox -q -v ctI_CB`;
+int $s = `checkBox -q -v ctS_CB`;
+int $r = `checkBox -q -v ctR_CB`;
+int $a = `checkBox -q -v ctA_CB`;
+
+ create_nP_instance(
+                     $baseGeoName,
+                     $instanceArray,
+                     $ct_index = $i,
+                     $ct_sc = $s,
+                     $ct_ro = $r,
+                     $aimD = $a
+                     );
+    //   $ct_ro 为0是自身旋转不创建
+	// $aimD 为1是让粒子延模型法线法线方向摆放
+}
+global proc create_ins_partTool()
+{
+	if(`window -exists instance_stone_ParticleUI`)
+		deleteUI instance_stone_ParticleUI;
+		
+	window -title "instance_stone_Particle" instance_stone_ParticleUI;
+	columnLayout __mainLayout;
+	checkBox -label "custom_Index" -value on ctI_CB;
+	checkBox -label "custom_scale" -value on ctS_CB;
+	checkBox -label "custom_rotate" -value off ctR_CB;
+	checkBox -label "custom_scaleAimWithNormal" -value on ctA_CB;
+	
+      separator  -bgc 1 1 0;
+	button -label "Create On!" -command "createInstanceGR()" CT_BT;	
+	window -e -s 0 -w 161 -h 101 instance_stone_ParticleUI;
+	showWindow instance_stone_ParticleUI;
+	
+	
+}

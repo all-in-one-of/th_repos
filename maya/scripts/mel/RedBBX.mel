@@ -1,0 +1,159 @@
+
+global proc createBBX()
+{
+
+	
+    $allmesh = `checkBox -q -v cbxAllMesh`;
+
+    $delmesh = `checkBox -q -v cbxDelS`;
+    createBoundingBoxCommd($allmesh,$delmesh);
+    
+}
+global proc createBoundingBoxCommd(int $allmesh,int $delmesh)
+{
+	float $polyBB[],$getPiv[];	
+	string $slArray[],$array[],$parent[];
+	string $ss;
+    
+	$slArray  = `ls -l -sl`;
+    
+    if ($allmesh == 1)
+    {
+		select -r `ls -g `;
+		// 列出几何体，并且选择
+		pickWalk -d up;
+		//按键盘上 方向上 键，选中所有几何体的位移节点
+    }
+    
+    for ($s in $slArray)
+    {
+		// $s 为选择对象，当有重名时,maya自动会列出重名上一级的名字，即长名
+
+		$array = stringToStringArray($s,"|");
+		// 当有长名的时候，用"|"来分成字符串数组		
+		$ss = $array[size($array)-1];
+		// $ss 提取成短名，当有重名时，列出的是长名，名字中有 | 来代替，但是当用此名字当新建box的名字时，会改成 _ ，所以需要重新得到短名
+		$beforFull = startString($s,size($s) - size($ss));
+		// 如果有长名，通过长名，列出短名，得到短名，可以为新建立的box起名字	
+		
+		polyCube -n ($ss + "_low");
+		// 创建一个box ，名字为选择对象+ low
+
+		$parent = `listRelatives -p -f $s`;
+		//以长名列出对象的父组	     
+		if (size ($parent) > 0)  //如果模型有父层级，则执行下面内容
+		{
+			select -add $parent[0];
+			//如果有父组，则加选父组
+			parent ;
+			//将新建的box加入选中的组里，即 将新建立的box 放入选择对象的同一层级下。
+		}
+			   
+		setAttr ($s + "_low.tx") `getAttr ($s + ".tx")`;
+		setAttr ($s + "_low.ty") `getAttr ($s + ".ty")`;
+		setAttr ($s + "_low.tz") `getAttr ($s + ".tz")`;
+
+		setAttr ($s + "_low.rx") `getAttr ($s + ".rx")`;
+		setAttr ($s + "_low.ry") `getAttr ($s + ".ry")`;
+		setAttr ($s + "_low.rz") `getAttr ($s + ".rz")`;
+
+		setAttr ($s + "_low.sx") `getAttr ($s + ".sx")`;
+		setAttr ($s + "_low.sy") `getAttr ($s + ".sy")`;
+		setAttr ($s + "_low.sz") `getAttr ($s + ".sz")`;
+
+		//以上为，查询选择对象的各个属性，传递给新创建的box，保证新的box的位移、旋转、缩放值和选择对象一致。
+
+		$polyBB = `xform -q -ws -bb $s`;
+		// 以世界坐标的方式，查询对象的boundingbox的值		 
+
+		xform -ws -t $polyBB[0] $polyBB[1] $polyBB[5]  ($s + "_low" + ".vtx[0]") ;
+		xform -ws -t $polyBB[3] $polyBB[1] $polyBB[5]  ($s + "_low" + ".vtx[1]") ;
+		xform -ws -t $polyBB[0] $polyBB[4] $polyBB[5]  ($s + "_low" + ".vtx[2]") ;
+		xform -ws -t $polyBB[3] $polyBB[4] $polyBB[5]  ($s + "_low" + ".vtx[3]") ;
+		xform -ws -t $polyBB[0] $polyBB[4] $polyBB[2]  ($s + "_low" + ".vtx[4]") ;
+		xform -ws -t $polyBB[3] $polyBB[4] $polyBB[2]  ($s + "_low" + ".vtx[5]") ;
+		xform -ws -t $polyBB[0] $polyBB[1] $polyBB[2]  ($s + "_low" + ".vtx[6]") ;
+		xform -ws -t $polyBB[3] $polyBB[1] $polyBB[2]  ($s + "_low" + ".vtx[7]") ;
+
+		$getPiv = `xform -q -ws -piv $s`;
+		//以世界坐标查询选择对象的轴心点位置
+		xform -ws -piv $getPiv[0] $getPiv[1] $getPiv[2] ($s + "_low");  
+		//将查询到的轴心位置，传递给新建的box，保证新的box轴心和选择对象一致。
+		delete -ch;
+		//删除历史
+
+        if ($delmesh == 1)       
+        {
+		delete $s;
+        rename  ($s + "_low") $ss;
+        }		
+		//删除选择对象。
+		select -cl;
+		//取消选择
+            
+     }
+    
+
+
+
+
+}
+
+
+
+global proc createpolyReduce()
+{
+    if (`checkBox -q -v cbxAllMesh` == 1)
+    {
+		select -r `ls -g `;
+		pickWalk -d up;
+    }
+    
+	string $a[]=`ls -sl`;
+	int $i;
+	for($i==0;$i<(size($a));$i++)
+	{
+	polyReduce  -percentage 50 -uvWeights 0 -colorWeights 0 
+
+				-keepQuadsWeight 1 -keepBorder 1 -keepMapBorder 1 
+
+				-keepOriginalVertices 0 -keepHardEdge 1 -compactness 0.5 
+
+				-triangulate 0 -replaceOriginal 1 -cachingReduce 1 -ch 1 $a[$i];  
+					
+	if (`checkBox -q -v cbxDelS` == 1)    
+		delete -ch;
+	 }
+ 
+}
+
+
+
+global proc RedBBX()
+{
+    	
+    if(`window -ex customButtonWin`)
+    { 
+    deleteUI customButtonWin; 
+    }
+    
+    else if(`windowPref -ex customButtonWin`)
+    { 
+    windowPref -r customButtonWin; 
+    }
+    window -w 214 -h 200-title ("Reduce & BoundingBox") -s 0 customButtonWin;	
+    columnLayout -columnAttach "left" 4 -rowSpacing 2 -columnWidth 60 ttiLayout;
+    flowLayout ;
+    checkBox -l "all mesh" -w 80 cbxAllMesh;
+    checkBox -l "del " -w 150 -v 1 cbxDelS;
+    	//columnLayout;
+    	setParent..;
+    	rowColumnLayout -nc 2;
+    	button -label "Low Model" -w 80 -h 40-bgc 0.9 0.2 0.4 -command "createpolyReduce" p2Bn;
+    	button -label "BBX Model" -w 80 -h 40-bgc 0.2 0.4 0.99 -command "createBBX" p1Bn;
+    	
+    	setParent ..;
+    
+    showWindow customButtonWin;   
+
+}
