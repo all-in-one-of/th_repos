@@ -1,0 +1,56 @@
+# STUDIO CONFIG
+rootPath:
+    z
+projectPath:
+    Z:/ZK_Project
+projectShort:
+    zk
+assets:
+    Assets
+state:
+    - Publish
+    - Work
+type:
+    - Character
+    - Environment
+    - Prop
+assetName:
+    '{projectPath}/{assets}/{state}/{type}'
+filePathFormat:
+    - lowrig : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'
+        file : '{id}_lowrig_{ver}.{ext}'
+    - mdl : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'
+        file : '{id}_mdl_{ver}.{ext}'
+    - shd : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'
+        file : '{id}_shd_{ver}.{ext}'
+    - rig : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'
+        file : '{id}_rig_{ver}.{ext}'
+    - bs : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'
+        file : '{id}_bs_{ver}.{ext}'
+    - floss : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'    
+        file : '{id}_floss_{ver}.{ext}'
+    - hair : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'    
+        file : '{id}_hair_{ver}.{ext}'
+    - gpu : 
+        path : '{projectPath}/{assets}/{state}/{type}/{id}/{step}/'    
+        file : '{id}_gpu_{ver}.{ext}'
+    - sourceimages : 
+        - diffuse : '{id}_{body}_diff.{ext}'
+        - specure : '{id}_{body}_spec.{ext}'
+    
+texType:
+    - diffuse : 'diff'
+    - specure : 'spec'
+    - color : 'clr'
+    
+pathFormat:
+    - assets : '{projectPath}/{assets}/{state}/{step}'
+    - step : '{projectPath}/{assets}/{state}/{id}/{step}/{ver}'
+    - file : '{projectPath}/{assets}/{state}/{id}/{step}/{ver}/{file}'

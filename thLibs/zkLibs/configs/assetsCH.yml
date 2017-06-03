@@ -1,0 +1,23 @@
+# STUDIO CONFIG
+Environment:
+    PalaceEXT:
+        皇宫外全景
+    PalaceINT:
+        皇宫内
+    PEDanFengDoor:
+        皇宫外丹凤殿
+    PELeftTaiHePalace:
+        皇宫外左侧泰合殿
+    PERightJinLuanPalace:
+        皇宫外右侧金銮殿
+    PESquare:
+        皇宫外地面广场
+    PEXuanZhengPalace:
+        皇宫外宣政殿
+        
+    WonderLand:
+        中阴界
+        
+Character:
+    FairyWar:
+        小山精
